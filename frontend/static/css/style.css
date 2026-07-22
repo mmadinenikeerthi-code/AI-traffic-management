@@ -1,0 +1,494 @@
+/* ==========================================================
+   AI Traffic Management System
+   style.css
+========================================================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;
+}
+
+body{
+    background:#f4f7fc;
+    overflow-x:hidden;
+}
+
+/* ==========================================================
+SIDEBAR
+========================================================== */
+
+.sidebar{
+
+    position:fixed;
+
+    left:0;
+
+    top:0;
+
+    width:260px;
+
+    height:100vh;
+
+    background:#0f172a;
+
+    color:white;
+
+    overflow-y:auto;
+
+    z-index:1000;
+
+}
+
+.logo{
+
+    padding:25px;
+
+    text-align:center;
+
+    background:#1e293b;
+
+}
+
+.logo h4{
+
+    color:#38bdf8;
+
+    font-weight:bold;
+
+}
+
+.sidebar ul{
+
+    list-style:none;
+
+}
+
+.sidebar ul li{
+
+    width:100%;
+
+}
+
+.sidebar ul li a{
+
+    display:block;
+
+    color:white;
+
+    text-decoration:none;
+
+    padding:16px 24px;
+
+    transition:.3s;
+
+}
+
+.sidebar ul li a:hover{
+
+    background:#2563eb;
+
+    padding-left:35px;
+
+}
+
+/* ==========================================================
+MAIN CONTENT
+========================================================== */
+
+.main-content{
+
+    margin-left:260px;
+
+    min-height:100vh;
+
+}
+
+.navbar{
+
+    height:70px;
+
+    padding-left:30px;
+
+    padding-right:30px;
+
+}
+
+/* ==========================================================
+CARDS
+========================================================== */
+
+.dashboard-card{
+
+    background:white;
+
+    border-radius:15px;
+
+    padding:25px;
+
+    box-shadow:0 8px 20px rgba(0,0,0,.08);
+
+    transition:.3s;
+
+    margin-bottom:25px;
+
+}
+
+.dashboard-card:hover{
+
+    transform:translateY(-5px);
+
+}
+
+.dashboard-card h5{
+
+    color:#555;
+
+}
+
+.dashboard-card h2{
+
+    color:#0f172a;
+
+    font-weight:bold;
+
+}
+
+/* ==========================================================
+STATUS
+========================================================== */
+
+.status-low{
+
+    color:green;
+
+    font-weight:bold;
+
+}
+
+.status-medium{
+
+    color:orange;
+
+    font-weight:bold;
+
+}
+
+.status-high{
+
+    color:red;
+
+    font-weight:bold;
+
+}
+
+/* ==========================================================
+BUTTONS
+========================================================== */
+
+.btn-primary{
+
+    border-radius:8px;
+
+}
+
+.btn-success{
+
+    border-radius:8px;
+
+}
+
+.btn-danger{
+
+    border-radius:8px;
+
+}
+
+/* ==========================================================
+TABLE
+========================================================== */
+
+.table{
+
+    background:white;
+
+    border-radius:10px;
+
+}
+
+.table thead{
+
+    background:#0f172a;
+
+    color:white;
+
+}
+
+.table tbody tr:hover{
+
+    background:#eef4ff;
+
+}
+
+/* ==========================================================
+FORM
+========================================================== */
+
+.form-control{
+
+    border-radius:8px;
+
+}
+
+.form-select{
+
+    border-radius:8px;
+
+}
+
+/* ==========================================================
+UPLOAD
+========================================================== */
+
+.upload-box{
+
+    border:2px dashed #3b82f6;
+
+    background:white;
+
+    padding:40px;
+
+    text-align:center;
+
+    border-radius:15px;
+
+}
+
+.upload-box:hover{
+
+    background:#eef6ff;
+
+}
+
+/* ==========================================================
+VIDEO
+========================================================== */
+
+video{
+
+    width:100%;
+
+    border-radius:10px;
+
+}
+
+/* ==========================================================
+CHART
+========================================================== */
+
+.chart-container{
+
+    background:white;
+
+    padding:20px;
+
+    border-radius:15px;
+
+    box-shadow:0 6px 15px rgba(0,0,0,.08);
+
+    margin-bottom:25px;
+
+}
+
+/* ==========================================================
+FOOTER
+========================================================== */
+
+.footer{
+
+    margin-top:40px;
+
+    text-align:center;
+
+    color:#777;
+
+    padding:20px;
+
+}
+
+/* ==========================================================
+SCROLLBAR
+========================================================== */
+
+::-webkit-scrollbar{
+
+    width:8px;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:#2563eb;
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:#ddd;
+
+}
+
+/* ==========================================================
+RESPONSIVE
+========================================================== */
+
+@media(max-width:992px){
+
+.sidebar{
+
+    width:75px;
+
+}
+
+.sidebar .logo h4{
+
+    display:none;
+
+}
+
+.sidebar ul li a{
+
+    text-align:center;
+
+    padding:18px;
+
+}
+
+.sidebar ul li a i{
+
+    font-size:22px;
+
+}
+
+.sidebar ul li a{
+
+    font-size:0;
+
+}
+
+.sidebar ul li a i{
+
+    font-size:20px;
+
+}
+
+.main-content{
+
+    margin-left:75px;
+
+}
+
+}
+
+@media(max-width:768px){
+
+.main-content{
+
+    margin-left:0;
+
+}
+
+.sidebar{
+
+    left:-260px;
+
+}
+
+}
+
+/* ==========================================================
+LOGIN PAGE
+========================================================== */
+
+.login-container{
+
+    height:100vh;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+}
+
+.login-card{
+
+    width:430px;
+
+    background:white;
+
+    padding:35px;
+
+    border-radius:15px;
+
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
+
+}
+
+.login-card h2{
+
+    text-align:center;
+
+    margin-bottom:25px;
+
+}
+
+.login-card .btn{
+
+    width:100%;
+
+}
+
+/* ==========================================================
+PROFILE
+========================================================== */
+
+.profile-image{
+
+    width:130px;
+
+    height:130px;
+
+    border-radius:50%;
+
+    border:5px solid #2563eb;
+
+}
+
+/* ==========================================================
+BADGES
+========================================================== */
+
+.badge-online{
+
+    background:green;
+
+}
+
+.badge-offline{
+
+    background:red;
+
+}
+
+.badge-warning{
+
+    background:orange;
+
+}
+
+/* ==========================================================
+END
+========================================================== */
