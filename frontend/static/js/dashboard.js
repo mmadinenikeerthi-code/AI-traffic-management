@@ -1,732 +1,172 @@
-// ==========================================================
-// dashboard.js
-// Part 1
-// AI Traffic Management & Congestion Detection System
-// Compatible with detect.py
-// ==========================================================
+/* ==========================================================================
+   AI Traffic Management System - Dashboard Logic
+   ========================================================================== */
 
-// ----------------------------------------------------------
-// Backend URL
-// ----------------------------------------------------------
+let trafficChart = null;
+let vehiclePieChart = null;
 
-const API_URL = "http://127.0.0.1:8000";
+/**
+ * Initialize Dashboard Data and Charts
+ */
+document.addEventListener("DOMContentLoaded", () => {
+    initializeDashboard();
+});
 
-// ----------------------------------------------------------
-// Common API Function
-// ----------------------------------------------------------
+function initializeDashboard() {
+    clearError();
+    fetchDashboardData();
+}
 
-async function api(endpoint, method = "GET") {
+/**
+ * Fetch Live Dashboard Metrics from Backend API
+ */
+async function fetchDashboardData() {
+    const token = localStorage.getItem("access_token") || localStorage.getItem("token");
 
     try {
-
-        const token =
-            localStorage.getItem("token") ||
-            localStorage.getItem("access_token");
-
-        if (!token) {
-
-            alert("Please login first.");
-
-            window.location.href = "/login";
-
-            return null;
-
-        }
-
-        const response = await fetch(API_URL + endpoint, {
-
-            method: method,
-
+        const response = await fetch("/api/dashboard/metrics", {
+            method: "GET",
             headers: {
-
-                "Content-Type": "application/json",
-
-                "Authorization": `Bearer ${token}`
-
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
             }
-
         });
 
-        if (response.status === 401) {
-
-            alert("Session expired.");
-
-            localStorage.clear();
-
-            window.location.href = "/login";
-
-            return null;
-
-        }
-
         if (!response.ok) {
-
-            console.error(endpoint, response.status);
-
-            return null;
-
+            if (response.status === 401) {
+                window.location.href = "/login";
+                return;
+            }
+            throw new Error("Failed to load dashboard data from server.");
         }
 
-        return await response.json();
+        const data = await response.json();
+        updateDashboardUI(data);
 
+    } catch (error) {
+        console.error("Dashboard fetch error:", error);
+        showError(error.message);
+    }
+}
+
+/**
+ * Update UI Elements with API Response Data
+ */
+function updateDashboardUI(data) {
+    // 1. Top Summary Cards
+    setElementText("totalVehicles", data.total_vehicles || 0);
+    setElementText("congestionLevel", data.congestion_level || "LOW");
+    setElementText("signalTime", (data.signal_time || 30) + " Sec");
+    setElementText("ambulanceCount", data.ambulance_count || 0);
+
+    // 2. Vehicle Breakdown Cards
+    setElementText("cars", data.cars || 0);
+    setElementText("bikes", data.bikes || 0);
+    setElementText("buses", data.buses || 0);
+    setElementText("trucks", data.trucks || 0);
+    setElementText("autos", data.auto_rickshaw || 0);
+    setElementText("ambulances", data.ambulance || 0);
+
+    // 3. AI Recommendations & Analytics
+    setElementText("density", (data.density || 0) + "%");
+    setElementText("speed", (data.speed || 0) + " km/h");
+    setElementText("signalStatus", data.signal_status || "GREEN");
+    setElementText("prediction", data.prediction || "Normal Traffic Flow");
+
+    if (data.ai_recommendation) {
+        const recBox = document.getElementById("recommendation");
+        if (recBox) recBox.innerText = data.ai_recommendation;
     }
 
-    catch (error) {
+    // 4. Congestion Summary Table
+    setElementText("currentLevel", data.congestion_level || "LOW");
+    setElementText("roadUsage", (data.road_usage || 0) + "%");
+    setElementText("delay", (data.estimated_delay || 0) + " Minutes");
+    setElementText("route", data.suggested_route || "Main Highway");
 
-        console.error(error);
-
-        return null;
-
+    // 5. Emergency Panel
+    const emergencyPanel = document.getElementById("emergencyPanel");
+    if (emergencyPanel) {
+        if (data.ambulance_count > 0 || data.has_emergency) {
+            emergencyPanel.className = "alert alert-danger";
+            emergencyPanel.innerHTML = "<strong>🚨 Priority Alert:</strong> Emergency Vehicle Detected! Clearing Route...";
+        } else {
+            emergencyPanel.className = "alert alert-success";
+            emergencyPanel.innerHTML = "No Emergency Vehicle Detected";
+        }
     }
 
-}
+    // 6. Update Recent Vehicle Table
+    updateVehicleTable(data);
 
-// ==========================================================
-// Dashboard Summary
-// GET /detect/live-dashboard
-// ==========================================================
-
-async function loadDashboard() {
-
-    const data = await api("/detect/live-dashboard");
-
-    if (!data) return;
-
-    document.getElementById("totalVehicles").innerHTML =
-        data.total_vehicles || 0;
-
-    document.getElementById("cars").innerHTML =
-        data.cars || 0;
-
-    document.getElementById("bikes").innerHTML =
-        data.bikes || 0;
-
-    document.getElementById("buses").innerHTML =
-        data.buses || 0;
-
-    document.getElementById("trucks").innerHTML =
-        data.trucks || 0;
-
-    document.getElementById("autos").innerHTML =
-        data.auto_rickshaw || 0;
-
-    document.getElementById("ambulances").innerHTML =
-        data.ambulance || 0;
-
-    document.getElementById("congestionLevel").innerHTML =
-        data.congestion_level || "LOW";
-
-    document.getElementById("signalTime").innerHTML =
-        (data.signal_time || 30) + " Sec";
-
-}
-
-// ==========================================================
-// Vehicle Table
-// Uses /detect/live-dashboard
-// ==========================================================
-
-async function loadVehicles() {
-
-    const data = await api("/detect/live-dashboard");
-
-    if (!data) return;
-
-    const table = document.getElementById("vehicleTable");
-
-    if (!table) return;
-
-    table.innerHTML = `
-
-<tr>
-<td>Cars</td>
-<td>${data.cars}</td>
-</tr>
-
-<tr>
-<td>Bikes</td>
-<td>${data.bikes}</td>
-</tr>
-
-<tr>
-<td>Buses</td>
-<td>${data.buses}</td>
-</tr>
-
-<tr>
-<td>Trucks</td>
-<td>${data.trucks}</td>
-</tr>
-
-<tr>
-<td>Auto Rickshaw</td>
-<td>${data.auto_rickshaw}</td>
-</tr>
-
-<tr>
-<td>Ambulance</td>
-<td>${data.ambulance}</td>
-</tr>
-
-<tr class="table-primary">
-
-<th>Total</th>
-
-<th>${data.total_vehicles}</th>
-
-</tr>
-
-`;
-
-}
-
-// ==========================================================
-// Latest Congestion
-// GET /detect/congestion/latest
-// ==========================================================
-
-async function loadCongestion() {
-
-    const data = await api("/detect/congestion/latest");
-
-    if (!data) return;
-
-    if (data.message) {
-
-        document.getElementById("congestionLevel").innerHTML = "LOW";
-
-        document.getElementById("signalTime").innerHTML = "30 Sec";
-
-        document.getElementById("density").innerHTML = "0%";
-
-        document.getElementById("speed").innerHTML = "0 km/h";
-
-        return;
-
+    // 7. Update Live Charts
+    if (data.chart_labels && data.chart_values) {
+        updateTrafficChart(data.chart_labels, data.chart_values);
     }
 
-    document.getElementById("congestionLevel").innerHTML =
-        data.congestion_level;
-
-    document.getElementById("signalTime").innerHTML =
-        data.signal_time + " Sec";
-
-    document.getElementById("density").innerHTML =
-        data.density + "%";
-
-    document.getElementById("speed").innerHTML =
-        data.average_speed + " km/h";
-
+    updatePieChart(data);
 }
 
-// ==========================================================
-// AI Recommendation
-// GET /detect/congestion/latest
-// ==========================================================
-
-async function loadRecommendation() {
-
-    const data = await api("/detect/congestion/latest");
-
-    if (!data) return;
-
-    const recommendation =
-        document.getElementById("recommendation");
-
-    if (!recommendation) return;
-
-    recommendation.innerHTML =
-        data.recommendation || "Traffic Normal";
-
-}
-
-// ==========================================================
-// Prediction
-// ==========================================================
-
-async function loadPrediction() {
-
-    const data = await api("/detect/congestion/latest");
-
-    if (!data) return;
-
-    const prediction =
-        document.getElementById("prediction");
-
-    if (!prediction) return;
-
-    prediction.innerHTML =
-        data.congestion_level || "LOW";
-
-}
-
-// ==========================================================
-// Signal Status
-// ==========================================================
-
-async function loadSignal() {
-
-    const data = await api("/detect/congestion/latest");
-
-    if (!data) return;
-
-    const signal =
-        document.getElementById("signalStatus");
-
-    if (!signal) return;
-
-    signal.innerHTML =
-        data.congestion_level || "LOW";
-
-}
-// ==========================================================
-// dashboard.js
-// Part 2
-// Emergency • Alerts • Reports • AI • Camera • Charts
-// Compatible with detect.py
-// ==========================================================
-
-// ----------------------------------------------------------
-// Emergency Vehicle
-// Uses /detect/live-dashboard
-// ----------------------------------------------------------
-
-async function loadEmergency() {
-
-    const data = await api("/detect/live-dashboard");
-
-    if (!data) return;
-
-    const emergencyDetected = (data.ambulance || 0) > 0;
-
-    const panel = document.getElementById("emergencyPanel");
-
-    if (panel) {
-
-        panel.className = emergencyDetected
-            ? "alert alert-danger"
-            : "alert alert-success";
-
-        panel.innerHTML = emergencyDetected
-            ? "Emergency Vehicle Detected"
-            : "No Emergency Vehicle Detected";
-    }
-
-    const count = document.getElementById("emergencyCount");
-    if (count) count.innerHTML = data.ambulance || 0;
-
-    const ambulance = document.getElementById("ambulanceCount");
-    if (ambulance) ambulance.innerHTML = data.ambulance || 0;
-
-    const priority = document.getElementById("priority");
-    if (priority)
-        priority.innerHTML = emergencyDetected ? "HIGH" : "NORMAL";
-
-    const extension = document.getElementById("extension");
-    if (extension)
-        extension.innerHTML = (data.signal_time || 30) + " Seconds";
-
-}
-
-// ----------------------------------------------------------
-// Live Alerts
-// ----------------------------------------------------------
-
-async function loadAlerts() {
-
-    const data = await api("/detect/congestion/latest");
-
-    if (!data) return;
-
-    const panel = document.getElementById("alertPanel");
-
-    if (!panel) return;
-
-    panel.innerHTML = "";
-
-    if (data.message) {
-
-        panel.innerHTML = `
-            <div class="alert alert-success">
-                No alerts available.
-            </div>
-        `;
-
-        return;
-    }
-
-    if (data.congestion_level === "HIGH") {
-
-        panel.innerHTML = `
-            <div class="alert alert-danger">
-                Heavy Traffic Detected
-            </div>
-        `;
-
-    }
-
-    else if (data.congestion_level === "MEDIUM") {
-
-        panel.innerHTML = `
-            <div class="alert alert-warning">
-                Moderate Traffic
-            </div>
-        `;
-
-    }
-
-    else {
-
-        panel.innerHTML = `
-            <div class="alert alert-success">
-                No alerts available.
-            </div>
-        `;
-
-    }
-
-}
-
-// ----------------------------------------------------------
-// Reports
-// Uses /detect/statistics
-// ----------------------------------------------------------
-
-async function loadReports() {
-
-    const data = await api("/detect/statistics");
-
-    if (!data) return;
-
-    const table = document.getElementById("reportTable");
-
-    if (!table) return;
-
-    table.innerHTML = `
-
-<tr>
-<td>Uploaded Videos</td>
-<td>${data.uploaded_videos}</td>
-</tr>
-
-<tr>
-<td>Processed Videos</td>
-<td>${data.processed_videos}</td>
-</tr>
-
-<tr>
-<td>Vehicle Records</td>
-<td>${data.vehicle_records}</td>
-</tr>
-
-<tr>
-<td>Congestion Records</td>
-<td>${data.congestion_records}</td>
-</tr>
-
-`;
-
-}
-
-// ----------------------------------------------------------
-// Camera Status
-// Uses /detect/health
-// ----------------------------------------------------------
-
-async function loadCameraStatus() {
-
-    const data = await api("/detect/health");
-
-    if (!data) return;
-
-    const camera = document.getElementById("cameraStatus");
-
-    if (!camera) return;
-
-    camera.innerHTML = data.status;
-
-}
-
-// ----------------------------------------------------------
-// AI Engine
-// Uses /detect/performance
-// ----------------------------------------------------------
-
-async function loadAIEngine() {
-
-    const data = await api("/detect/performance");
-
-    if (!data) return;
-
-    const ai = document.getElementById("aiEngine");
-
-    if (!ai) return;
-
-    ai.innerHTML =
-        `${data.ai_model}<br>${data.status}`;
-
-}
-
-// ----------------------------------------------------------
-// Pie Chart
-// Uses /detect/analytics/classes
-// ----------------------------------------------------------
-
-async function loadPieChart() {
-
-    if (typeof pieChart === "undefined") return;
-
-    const data = await api("/detect/analytics/classes");
-
-    if (!data) return;
-
-    pieChart.data.datasets[0].data = [
-
-        data.cars || 0,
-        data.bikes || 0,
-        data.buses || 0,
-        data.trucks || 0,
-        data.auto_rickshaw || 0,
-        data.ambulance || 0
-
+/**
+ * Populate Vehicle Breakdown Table
+ */
+function updateVehicleTable(data) {
+    const tableBody = document.getElementById("vehicleTable");
+    if (!tableBody) return;
+
+    const vehicles = [
+        { type: "Cars", count: data.cars || 0 },
+        { type: "Bikes / Two-Wheelers", count: data.bikes || 0 },
+        { type: "Buses", count: data.buses || 0 },
+        { type: "Trucks / Heavy Vehicles", count: data.trucks || 0 },
+        { type: "Auto Rickshaws", count: data.auto_rickshaw || 0 },
+        { type: "Emergency Vehicles", count: data.ambulance || 0 }
     ];
 
-    pieChart.update();
-
-}
-
-// ----------------------------------------------------------
-// Bar Chart
-// Uses /detect/history
-// ----------------------------------------------------------
-
-async function loadBarChart() {
-
-    if (typeof trafficChart === "undefined") return;
-
-    const history = await api("/detect/history");
-
-    if (!history) return;
-
-    trafficChart.data.labels =
-        history.map((_, index) => `#${index + 1}`);
-
-    trafficChart.data.datasets[0].data =
-        history.map(item => item.total);
-
-    trafficChart.update();
-
-}
-
-// ----------------------------------------------------------
-// Error Display
-// ----------------------------------------------------------
-
-function showError(message) {
-
-    console.error(message);
-
-    const errorBox = document.getElementById("errorBox");
-
-    if (!errorBox) return;
-
-    errorBox.innerHTML = `
-        <div class="alert alert-danger">
-            ${message}
-        </div>
-    `;
-
-}
-
-// ==========================================================
-// dashboard.js
-// Part 3
-// Initialization • Auto Refresh • Logout • Session
-// Compatible with detect.py
-// ==========================================================
-
-// ----------------------------------------------------------
-// Auto Refresh
-// ----------------------------------------------------------
-
-function startAutoRefresh() {
-
-    setInterval(async () => {
-
-        await loadDashboard();
-        await loadVehicles();
-        await loadCongestion();
-        await loadRecommendation();
-        await loadPrediction();
-        await loadSignal();
-        await loadEmergency();
-        await loadAlerts();
-        await loadReports();
-        await loadCameraStatus();
-        await loadAIEngine();
-        await loadPieChart();
-        await loadBarChart();
-
-    }, 10000);
-
-}
-
-// ----------------------------------------------------------
-// Logout
-// ----------------------------------------------------------
-
-function logout() {
-
-    localStorage.removeItem("token");
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("username");
-    localStorage.removeItem("user");
-
-    window.location.href = "/login";
-
-}
-
-// ----------------------------------------------------------
-// Session Check
-// ----------------------------------------------------------
-
-function checkSession() {
-
-    const token =
-        localStorage.getItem("token") ||
-        localStorage.getItem("access_token");
-
-    if (!token) {
-
-        alert("Session expired. Please login again.");
-
-        window.location.href = "/login";
-
-        return false;
-
-    }
-
-    return true;
-
-}
-
-// ----------------------------------------------------------
-// Initialize Dashboard
-// ----------------------------------------------------------
-
-async function initializeDashboard() {
-
-    if (!checkSession()) return;
-
-    try {
-
-        await Promise.all([
-
-            loadDashboard(),
-            loadVehicles(),
-            loadCongestion(),
-            loadRecommendation(),
-            loadPrediction(),
-            loadSignal(),
-            loadEmergency(),
-            loadAlerts(),
-            loadReports(),
-            loadCameraStatus(),
-            loadAIEngine(),
-            loadPieChart(),
-            loadBarChart()
-
-        ]);
-
-        console.log("Dashboard Loaded Successfully");
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-        showError("Unable to load dashboard.");
-
-    }
-
-    startAutoRefresh();
-
-}
-
-// ----------------------------------------------------------
-// Refresh Button
-// ----------------------------------------------------------
-
-const refreshBtn = document.querySelector(".btn.btn-primary");
-
-if (refreshBtn) {
-
-    refreshBtn.addEventListener("click", async () => {
-
-        await initializeDashboard();
-
+    let html = "";
+    vehicles.forEach(item => {
+        html += `
+            <tr>
+                <td><strong>${item.type}</strong></td>
+                <td><span class="badge bg-primary rounded-pill">${item.count}</span></td>
+            </tr>
+        `;
     });
 
+    tableBody.innerHTML = html;
 }
 
-// ----------------------------------------------------------
-// Logout Button
-// ----------------------------------------------------------
-
-const logoutBtn = document.getElementById("logoutBtn");
-
-if (logoutBtn) {
-
-    logoutBtn.addEventListener("click", logout);
-
-}
-
-// ----------------------------------------------------------
-// Page Load
-// ----------------------------------------------------------
-
-window.addEventListener("DOMContentLoaded", () => {
-
-    if (
-
-        window.location.pathname !== "/login" &&
-        window.location.pathname !== "/register"
-
-    ) {
-
-        initializeDashboard();
-
+/**
+ * Helper to Safely Set Text Content
+ */
+function setElementText(id, text) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.innerText = text;
     }
+}
 
-});
+/**
+ * Display Error Messages
+ */
+function showError(message) {
+    const errorBox = document.getElementById("errorBox");
+    if (errorBox) {
+        errorBox.innerHTML = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>System Alert:</strong> ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+}
 
-// ----------------------------------------------------------
-// Global Error Handler
-// ----------------------------------------------------------
-
-window.onerror = function(message, source, line, column, error) {
-
-    console.error("JavaScript Error");
-
-    console.error("Message :", message);
-    console.error("Source  :", source);
-    console.error("Line    :", line);
-
-    return false;
-
-};
-
-// ----------------------------------------------------------
-// Unhandled Promise Errors
-// ----------------------------------------------------------
-
-window.addEventListener("unhandledrejection", function(event){
-
-    console.error("Unhandled Promise:", event.reason);
-
-});
-
-// ==========================================================
-// End dashboard.js
-// ==========================================================
+/**
+ * Clear Error Messages
+ */
+function clearError() {
+    const errorBox = document.getElementById("errorBox");
+    if (errorBox) {
+        errorBox.innerHTML = "";
+    }
+}

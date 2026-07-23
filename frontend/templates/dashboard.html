@@ -4,1146 +4,537 @@
 Dashboard | AI Traffic Management System
 {% endblock %}
 
+{% block head %}
+<!-- Font Awesome Icons -->
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+/>
+{% endblock %}
+
 {% block content %}
 
 <div class="container-fluid p-4">
 
     <!-- Header -->
-
     <div class="row mb-4">
-
         <div class="col-md-8">
-
             <h2 class="fw-bold">
-
                 <i class="fas fa-chart-line text-primary"></i>
-
                 AI Traffic Dashboard
-
             </h2>
-
             <p class="text-muted">
-
                 AI Powered Traffic Management & Congestion Detection System
-
             </p>
-
         </div>
-
-        <div class="col-md-4 text-end">
-
+        <div class="col-md-4 text-end d-flex justify-content-end align-items-center gap-2">
+            <a href="/map" target="_blank" class="btn btn-outline-primary">
+                <i class="fas fa-map-marked-alt me-1"></i> Open Route Planner
+            </a>
             <button class="btn btn-primary" onclick="initializeDashboard()">
-
-                <i class="fas fa-sync-alt"></i>
-
-                Refresh Dashboard
-
+                <i class="fas fa-sync-alt me-1"></i> Refresh
             </button>
-
         </div>
-
     </div>
 
     <!-- Summary Cards -->
-
     <div class="row">
-
         <div class="col-lg-3 col-md-6 mb-3">
-
             <div class="card shadow-sm">
-
                 <div class="card-body text-center">
-
                     <i class="fas fa-car fa-2x text-primary"></i>
-
                     <h5 class="mt-3">Total Vehicles</h5>
-
                     <h2 id="totalVehicles">0</h2>
-
                 </div>
-
             </div>
-
         </div>
 
         <div class="col-lg-3 col-md-6 mb-3">
-
             <div class="card shadow-sm">
-
                 <div class="card-body text-center">
-
                     <i class="fas fa-road fa-2x text-warning"></i>
-
                     <h5 class="mt-3">Congestion</h5>
-
                     <h2 id="congestionLevel">LOW</h2>
-
                 </div>
-
             </div>
-
         </div>
 
         <div class="col-lg-3 col-md-6 mb-3">
-
             <div class="card shadow-sm">
-
                 <div class="card-body text-center">
-
                     <i class="fas fa-traffic-light fa-2x text-success"></i>
-
                     <h5 class="mt-3">Signal Time</h5>
-
                     <h2 id="signalTime">30 Sec</h2>
-
                 </div>
-
             </div>
-
         </div>
 
         <div class="col-lg-3 col-md-6 mb-3">
-
             <div class="card shadow-sm">
-
                 <div class="card-body text-center">
-
                     <i class="fas fa-ambulance fa-2x text-danger"></i>
-
                     <h5 class="mt-3">Emergency</h5>
-
                     <h2 id="ambulanceCount">0</h2>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
     <!-- Vehicle Cards -->
-
-    <div class="row mt-4">
-
+    <div class="row mt-3">
         <div class="col-md-2 mb-3">
-
             <div class="card shadow-sm text-center">
-
                 <div class="card-body">
-
                     <i class="fas fa-car fa-2x text-primary"></i>
-
                     <h5 class="mt-2">Cars</h5>
-
                     <h3 id="cars">0</h3>
-
                 </div>
-
             </div>
-
         </div>
 
         <div class="col-md-2 mb-3">
-
             <div class="card shadow-sm text-center">
-
                 <div class="card-body">
-
                     <i class="fas fa-motorcycle fa-2x text-warning"></i>
-
                     <h5 class="mt-2">Bikes</h5>
-
                     <h3 id="bikes">0</h3>
-
                 </div>
-
             </div>
-
         </div>
 
         <div class="col-md-2 mb-3">
-
             <div class="card shadow-sm text-center">
-
                 <div class="card-body">
-
                     <i class="fas fa-bus fa-2x text-success"></i>
-
                     <h5 class="mt-2">Buses</h5>
-
                     <h3 id="buses">0</h3>
-
                 </div>
-
             </div>
-
         </div>
 
         <div class="col-md-2 mb-3">
-
             <div class="card shadow-sm text-center">
-
                 <div class="card-body">
-
                     <i class="fas fa-truck fa-2x text-danger"></i>
-
                     <h5 class="mt-2">Trucks</h5>
-
                     <h3 id="trucks">0</h3>
-
                 </div>
-
             </div>
-
         </div>
 
         <div class="col-md-2 mb-3">
-
             <div class="card shadow-sm text-center">
-
                 <div class="card-body">
-
                     <i class="fas fa-taxi fa-2x text-info"></i>
-
                     <h5 class="mt-2">Auto</h5>
-
                     <h3 id="autos">0</h3>
-
                 </div>
-
             </div>
-
         </div>
 
         <div class="col-md-2 mb-3">
-
             <div class="card shadow-sm text-center">
-
                 <div class="card-body">
-
                     <i class="fas fa-ambulance fa-2x text-danger"></i>
-
                     <h5 class="mt-2">Ambulance</h5>
-
                     <h3 id="ambulances">0</h3>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
-        <!-- ========================================= -->
+
     <!-- Charts Section -->
-    <!-- ========================================= -->
-
-    <div class="row mt-4">
-
-        <div class="col-lg-8">
-
+    <div class="row mt-3">
+        <div class="col-lg-8 mb-3">
             <div class="card shadow-sm">
-
                 <div class="card-header bg-white">
-
-                    <h4>
-
+                    <h4 class="mb-0">
                         <i class="fas fa-chart-line text-primary"></i>
-
                         Live Traffic Analysis
-
                     </h4>
-
                 </div>
-
                 <div class="card-body">
-
-                    <canvas
-                        id="trafficChart"
-                        height="120">
-                    </canvas>
-
+                    <canvas id="trafficChart" height="120"></canvas>
                 </div>
-
             </div>
-
         </div>
 
-        <div class="col-lg-4">
-
+        <div class="col-lg-4 mb-3">
             <div class="card shadow-sm">
-
                 <div class="card-header bg-white">
-
-                    <h4>
-
+                    <h4 class="mb-0">
                         <i class="fas fa-chart-pie text-success"></i>
-
                         Vehicle Distribution
-
                     </h4>
-
                 </div>
-
                 <div class="card-body">
-
-                    <canvas
-                        id="vehicleChart">
-                    </canvas>
-
+                    <canvas id="vehicleChart"></canvas>
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
-    <!-- ========================================= -->
     <!-- Live Camera & AI Recommendation -->
-    <!-- ========================================= -->
-
-    <div class="row mt-4">
-
-        <div class="col-lg-7">
-
+    <div class="row mt-3">
+        <div class="col-lg-7 mb-3">
             <div class="card shadow-sm">
-
                 <div class="card-header bg-white">
-
-                    <h4>
-
+                    <h4 class="mb-0">
                         <i class="fas fa-video text-danger"></i>
-
                         Live Camera Feed
-
                     </h4>
-
                 </div>
-
                 <div class="card-body">
-
                     <img
                         src="https://placehold.co/900x500?text=Live+Traffic+Camera"
                         id="liveCamera"
                         class="img-fluid rounded"
-                        style="width:100%;height:420px;object-fit:cover;"
+                        style="width:100%; height:420px; object-fit:cover;"
                         alt="Live Camera">
-
                 </div>
-
             </div>
-
         </div>
 
-        <div class="col-lg-5">
-
+        <div class="col-lg-5 mb-3">
             <div class="card shadow-sm">
-
                 <div class="card-header bg-white">
-
-                    <h4>
-
+                    <h4 class="mb-0">
                         <i class="fas fa-brain text-primary"></i>
-
                         AI Recommendation
-
                     </h4>
-
                 </div>
-
                 <div class="card-body">
-
-                    <div
-                        id="recommendation"
-                        class="alert alert-info">
-
+                    <div id="recommendation" class="alert alert-info">
                         Waiting for AI Recommendation...
-
                     </div>
 
-                    <table class="table table-bordered">
-
+                    <table class="table table-bordered mb-0">
                         <tbody>
-
                             <tr>
-
                                 <th>Traffic Density</th>
-
-                                <td id="density">
-
-                                    0%
-
-                                </td>
-
+                                <td id="density">0%</td>
                             </tr>
-
                             <tr>
-
                                 <th>Average Speed</th>
-
-                                <td id="speed">
-
-                                    0 km/h
-
-                                </td>
-
+                                <td id="speed">0 km/h</td>
                             </tr>
-
                             <tr>
-
                                 <th>Signal Status</th>
-
-                                <td id="signalStatus">
-
-                                    GREEN
-
-                                </td>
-
+                                <td id="signalStatus">GREEN</td>
                             </tr>
-
                             <tr>
-
                                 <th>Prediction</th>
-
-                                <td id="prediction">
-
-                                    Normal
-
-                                </td>
-
+                                <td id="prediction">Normal</td>
                             </tr>
-
                         </tbody>
-
                     </table>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
-    <!-- ========================================= -->
     <!-- Emergency & Congestion -->
-    <!-- ========================================= -->
-
-    <div class="row mt-4">
-
-        <div class="col-lg-6">
-
+    <div class="row mt-3">
+        <div class="col-lg-6 mb-3">
             <div class="card shadow-sm">
-
                 <div class="card-header bg-white">
-
-                    <h4>
-
+                    <h4 class="mb-0">
                         <i class="fas fa-ambulance text-danger"></i>
-
                         Emergency Vehicle
-
                     </h4>
-
                 </div>
-
                 <div class="card-body">
-
-                    <div
-                        id="emergencyPanel"
-                        class="alert alert-success">
-
+                    <div id="emergencyPanel" class="alert alert-success">
                         No Emergency Vehicle Detected
-
                     </div>
 
-                    <table class="table table-bordered">
-
+                    <table class="table table-bordered mb-0">
                         <tbody>
-
                             <tr>
-
                                 <th>Emergency</th>
-
                                 <td>No</td>
-
                             </tr>
-
                             <tr>
-
                                 <th>Priority</th>
-
                                 <td>NORMAL</td>
-
                             </tr>
-
                             <tr>
-
                                 <th>Signal Time</th>
-
                                 <td>30 Sec</td>
-
                             </tr>
-
                             <tr>
-
                                 <th>Message</th>
-
                                 <td>No emergency vehicle.</td>
-
                             </tr>
-
                         </tbody>
-
                     </table>
-
                 </div>
-
             </div>
-
         </div>
 
-        <div class="col-lg-6">
-
+        <div class="col-lg-6 mb-3">
             <div class="card shadow-sm">
-
                 <div class="card-header bg-white">
-
-                    <h4>
-
+                    <h4 class="mb-0">
                         <i class="fas fa-road text-warning"></i>
-
                         Congestion Summary
-
                     </h4>
-
                 </div>
-
                 <div class="card-body">
-
-                    <table class="table table-striped">
-
+                    <table class="table table-striped mb-0">
                         <tbody>
-
                             <tr>
-
                                 <th>Current Level</th>
-
-                                <td id="currentLevel">
-
-                                    LOW
-
-                                </td>
-
+                                <td id="currentLevel">LOW</td>
                             </tr>
-
                             <tr>
-
                                 <th>Road Usage</th>
-
-                                <td id="roadUsage">
-
-                                    0%
-
-                                </td>
-
+                                <td id="roadUsage">0%</td>
                             </tr>
-
                             <tr>
-
                                 <th>Estimated Delay</th>
-
-                                <td id="delay">
-
-                                    0 Minutes
-
-                                </td>
-
+                                <td id="delay">0 Minutes</td>
                             </tr>
-
                             <tr>
-
                                 <th>Suggested Route</th>
-
-                                <td id="route">
-
-                                    Main Highway
-
-                                </td>
-
+                                <td id="route">Main Highway</td>
                             </tr>
-
                         </tbody>
-
                     </table>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
-        <!-- ========================================= -->
+
     <!-- System Status -->
-    <!-- ========================================= -->
-
-    <div class="row mt-4">
-
-        <div class="col-lg-12">
-
+    <div class="row mt-3">
+        <div class="col-lg-12 mb-3">
             <div class="card shadow-sm">
-
                 <div class="card-header bg-white">
-
-                    <h4>
-
+                    <h4 class="mb-0">
                         <i class="fas fa-server text-success"></i>
-
                         System Status
-
                     </h4>
-
                 </div>
-
                 <div class="card-body">
-
                     <div class="row text-center">
-
                         <div class="col-md-3">
-
                             <i class="fas fa-microchip fa-3x text-primary"></i>
-
                             <h5 class="mt-3">AI Engine</h5>
-
-                            <span
-                                id="aiEngine"
-                                class="badge bg-success">
-
-                                RUNNING
-
-                            </span>
-
+                            <span id="aiEngine" class="badge bg-success">RUNNING</span>
                         </div>
-
                         <div class="col-md-3">
-
                             <i class="fas fa-database fa-3x text-warning"></i>
-
                             <h5 class="mt-3">Database</h5>
-
-                            <span class="badge bg-success">
-
-                                CONNECTED
-
-                            </span>
-
+                            <span class="badge bg-success">CONNECTED</span>
                         </div>
-
                         <div class="col-md-3">
-
                             <i class="fas fa-network-wired fa-3x text-info"></i>
-
                             <h5 class="mt-3">API</h5>
-
-                            <span class="badge bg-success">
-
-                                ACTIVE
-
-                            </span>
-
+                            <span class="badge bg-success">ACTIVE</span>
                         </div>
-
                         <div class="col-md-3">
-
                             <i class="fas fa-video fa-3x text-danger"></i>
-
                             <h5 class="mt-3">Camera</h5>
-
-                            <span
-                                id="cameraStatus"
-                                class="badge bg-success">
-
-                                ONLINE
-
-                            </span>
-
+                            <span id="cameraStatus" class="badge bg-success">ONLINE</span>
                         </div>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
-    <!-- ========================================= -->
-    <!-- Recent Vehicle Detection -->
-    <!-- ========================================= -->
-
-    <div class="row mt-4">
-
-        <div class="col-lg-8">
-
+    <!-- Recent Vehicle Detection & Live Alerts -->
+    <div class="row mt-3">
+        <div class="col-lg-8 mb-3">
             <div class="card shadow-sm">
-
                 <div class="card-header bg-white">
-
-                    <h4>
-
+                    <h4 class="mb-0">
                         <i class="fas fa-list text-primary"></i>
-
                         Recent Vehicle Detection
-
                     </h4>
-
                 </div>
-
                 <div class="card-body">
-
-                    <table class="table table-striped table-hover">
-
+                    <table class="table table-striped table-hover mb-0">
                         <thead>
-
                             <tr>
-
                                 <th>Vehicle Type</th>
-
                                 <th>Count</th>
-
                             </tr>
-
                         </thead>
-
                         <tbody id="vehicleTable">
-
                             <tr>
-
-                                <td colspan="2" class="text-center">
-
-                                    Loading vehicle data...
-
-                                </td>
-
+                                <td colspan="2" class="text-center">Loading vehicle data...</td>
                             </tr>
-
                         </tbody>
-
                     </table>
-
                 </div>
-
             </div>
-
         </div>
 
-        <!-- Live Alerts -->
-
-        <div class="col-lg-4">
-
+        <div class="col-lg-4 mb-3">
             <div class="card shadow-sm">
-
                 <div class="card-header bg-white">
-
-                    <h4>
-
+                    <h4 class="mb-0">
                         <i class="fas fa-bell text-danger"></i>
-
                         Live Alerts
-
                     </h4>
-
                 </div>
-
                 <div class="card-body">
-
                     <div id="alertBox">
-
-                        <div class="alert alert-success">
-
-                            No alerts available.
-
-                        </div>
-
+                        <div class="alert alert-success mb-0">No alerts available.</div>
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
-    <!-- ========================================= -->
     <!-- Traffic Reports -->
-    <!-- ========================================= -->
-
-    <div class="row mt-4">
-
-        <div class="col-lg-12">
-
+    <div class="row mt-3">
+        <div class="col-lg-12 mb-3">
             <div class="card shadow-sm">
-
                 <div class="card-header bg-white">
-
-                    <h4>
-
+                    <h4 class="mb-0">
                         <i class="fas fa-file-alt text-success"></i>
-
                         Traffic Reports
-
                     </h4>
-
                 </div>
-
                 <div class="card-body">
-
-                    <table class="table table-bordered table-hover">
-
+                    <table class="table table-bordered table-hover mb-0">
                         <thead>
-
                             <tr>
-
                                 <th>Description</th>
-
                                 <th>Value</th>
-
                             </tr>
-
                         </thead>
-
                         <tbody id="reportTable">
-
                             <tr>
-
-                                <td colspan="2" class="text-center">
-
-                                    Loading reports...
-
-                                </td>
-
+                                <td colspan="2" class="text-center">Loading reports...</td>
                             </tr>
-
                         </tbody>
-
                     </table>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
     <!-- Error Box -->
-
-    <div class="row mt-3">
-
+    <div class="row mt-2">
         <div class="col-lg-12">
-
             <div id="errorBox"></div>
-
         </div>
-
     </div>
 
     <!-- Footer -->
-
-    <footer class="mt-5 text-center text-muted">
-
+    <footer class="mt-4 text-center text-muted">
         <hr>
-
-        <p>
-
-            © 2026 AI Traffic Management & Congestion Detection System
-
-        </p>
-
+        <p>© 2026 AI Traffic Management & Congestion Detection System</p>
     </footer>
 
 </div>
 
 {% endblock %}
-{% block javascript %}
 
+{% block javascript %}
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- Dashboard JavaScript -->
+<!-- Dashboard JS -->
 <script src="/static/js/dashboard.js"></script>
 
 <script>
-
 let trafficChart;
 let pieChart;
 
 window.addEventListener("DOMContentLoaded", () => {
 
-    // ===============================
     // Traffic Line Chart
-    // ===============================
-
     const trafficCtx = document.getElementById("trafficChart");
-
     if (trafficCtx) {
-
         trafficChart = new Chart(trafficCtx, {
-
             type: "line",
-
             data: {
-
                 labels: [],
-
-                datasets: [
-
-                    {
-
-                        label: "Vehicle Count",
-
-                        data: [],
-
-                        borderWidth: 3,
-
-                        tension: 0.4,
-
-                        fill: false
-
-                    }
-
-                ]
-
+                datasets: [{
+                    label: "Vehicle Count",
+                    data: [],
+                    borderWidth: 3,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
             },
-
             options: {
-
                 responsive: true,
-
                 maintainAspectRatio: false,
-
-                plugins: {
-
-                    legend: {
-
-                        display: true
-
-                    }
-
-                }
-
+                plugins: { legend: { display: true } }
             }
-
         });
-
     }
 
-    // ===============================
     // Vehicle Pie Chart
-    // ===============================
-
     const vehicleCtx = document.getElementById("vehicleChart");
-
     if (vehicleCtx) {
-
         pieChart = new Chart(vehicleCtx, {
-
             type: "doughnut",
-
             data: {
-
-                labels: [
-
-                    "Cars",
-
-                    "Bikes",
-
-                    "Buses",
-
-                    "Trucks",
-
-                    "Auto",
-
-                    "Ambulance"
-
-                ],
-
-                datasets: [
-
-                    {
-
-                        data: [0,0,0,0,0,0]
-
-                    }
-
-                ]
-
+                labels: ["Cars", "Bikes", "Buses", "Trucks", "Auto", "Ambulance"],
+                datasets: [{ 
+                    data: [0, 0, 0, 0, 0, 0],
+                    backgroundColor: [
+                        '#2563eb', '#f59e0b', '#16a34a', 
+                        '#dc2626', '#06b6d4', '#ef4444'
+                    ]
+                }]
             },
-
             options: {
-
                 responsive: true,
-
                 maintainAspectRatio: false
-
             }
-
         });
-
-    }
-    // ===============================
-    // Load Dashboard Data
-    // ===============================
-
-    if (typeof initializeDashboard === "function") {
-
-        initializeDashboard();
-
     }
 
-    // ===============================
-    // Auto Refresh Every 10 Seconds
-    // ===============================
-
-    setInterval(() => {
-
-        if (typeof initializeDashboard === "function") {
-
-            initializeDashboard();
-
-        }
-
-    }, 10000);
-
+    initializeDashboard();
 });
 
-
-// =====================================
-// Update Traffic Line Chart
-// =====================================
-
 function updateTrafficChart(labels, values) {
-
     if (!trafficChart) return;
-
     trafficChart.data.labels = labels;
-
     trafficChart.data.datasets[0].data = values;
-
     trafficChart.update();
-
 }
-
-
-// =====================================
-// Update Vehicle Pie Chart
-// =====================================
 
 function updatePieChart(data) {
-
     if (!pieChart) return;
-
     pieChart.data.datasets[0].data = [
-
         data.cars || 0,
-
         data.bikes || 0,
-
         data.buses || 0,
-
         data.trucks || 0,
-
         data.auto_rickshaw || 0,
-
         data.ambulance || 0
-
     ];
-
     pieChart.update();
-
 }
-
-
-// =====================================
-// Error Display
-// =====================================
 
 function showError(message) {
-
     const box = document.getElementById("errorBox");
-
-    if (!box) return;
-
-    box.innerHTML = `
-
-        <div class="alert alert-danger">
-
-            <strong>Error:</strong> ${message}
-
-        </div>
-
-    `;
-
+    if (box) {
+        box.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${message}</div>`;
+    }
 }
-
-
-// =====================================
-// Clear Error
-// =====================================
 
 function clearError() {
-
     const box = document.getElementById("errorBox");
-
-    if (box) {
-
-        box.innerHTML = "";
-
-    }
-
+    if (box) box.innerHTML = "";
 }
-// =====================================
-// Logout
-// =====================================
-
-function logout() {
-
-    localStorage.removeItem("access_token");
-
-    window.location.href = "/login";
-
-}
-
-
-// =====================================
-// Session Expired Check
-// =====================================
 
 function sessionExpired() {
-
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-
-        window.location.href = "/login";
-
-    }
-
+    const token = localStorage.getItem("access_token") || localStorage.getItem("token");
+    if (!token) window.location.href = "/login";
 }
 
-
-// =====================================
-// Check session every minute
-// =====================================
-
 setInterval(sessionExpired, 60000);
-
 </script>
-
 {% endblock %}

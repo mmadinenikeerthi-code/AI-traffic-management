@@ -104,6 +104,13 @@ async def dashboard_page(request: Request):
         context={"title": "Dashboard"}
     )
 
+@app.get("/map", response_class=HTMLResponse)
+async def map_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="map.html",
+        context={"title": "Traffic Map"}
+    )
 
 @app.get("/health")
 async def health():
