@@ -1,0 +1,9 @@
+$kind: http-request
+name: dashboard
+url: http://127.0.0.1:8000/dashboard/
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{token}}"
+order: 4374189207615347

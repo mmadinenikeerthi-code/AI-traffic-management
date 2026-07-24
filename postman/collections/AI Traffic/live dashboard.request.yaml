@@ -1,0 +1,9 @@
+$kind: http-request
+name: live dashboard
+url: http://127.0.0.1:8000/detect/live-dashboard
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{token}}"
+order: 4465088482022330

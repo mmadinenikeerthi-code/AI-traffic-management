@@ -27,12 +27,6 @@ from app import auth
 from app import utils
 from app import config
 from app.database import get_db
-from app.utils import (
-    congestion_level,
-    density_percentage,
-    recommendation,
-    signal_time
-)
 
 router = APIRouter()
 
@@ -47,6 +41,7 @@ label_annotator = sv.LabelAnnotator()
 
 # Vehicle IDs already counted
 counted_ids = set()
+
 # ==========================================================
 # LIVE CAMERA VARIABLES
 # ==========================================================
@@ -64,16 +59,16 @@ latest_vehicle_data = {
     "persons": 0,
     "total": 0
 }
+
 def connect_rtsp():
-
     global live_camera
-
     live_camera = cv2.VideoCapture(config.RTSP_URL)
 
     if not live_camera.isOpened():
         raise Exception("Unable to connect to RTSP Camera")
 
     return live_camera
+
 
 # ==========================================================
 # PART 1: Video Upload & Validation
@@ -277,6 +272,7 @@ def process_video(
 
     total = cars + bikes + buses + trucks + auto + ambulance
 
+    # Save Vehicle Count Record
     vehicle = models.VehicleCount(
         cars=cars,
         bikes=bikes,
@@ -291,6 +287,27 @@ def process_video(
     db.add(vehicle)
     db.commit()
     db.refresh(vehicle)
+
+    # ==========================================================
+    # FIX 1: AUTO-GENERATE CONGESTION RECORD IMMEDIATELY
+    # ==========================================================
+    level, green_time, message = utils.congestion_level(total)
+    density = utils.density_percentage(total)
+    avg_speed = utils.average_speed(level)
+    advice = utils.recommendation(level)
+
+    congestion = models.Congestion(
+        vehicle_count=total,
+        density=density,
+        congestion_level=level,
+        signal_time=green_time,
+        recommendation=advice,
+        average_speed=avg_speed
+    )
+
+    db.add(congestion)
+    db.commit()
+    db.refresh(congestion)
 
     video.processed = True
     db.commit()
@@ -331,21 +348,16 @@ def analyse_congestion(
             detail="Vehicle record not found."
         )
 
-    total = vehicle.total
-    level, green_time, message = congestion_level(total)
-    density = density_percentage(total)
-    avg_speed = utils.average_speed(level)
-    advice = recommendation(level)
+    metrics = utils.get_congestion_metrics(vehicle.total, ambulance_count=vehicle.ambulance)
 
     congestion = models.Congestion(
-    vehicle_count=total,
-    density=density,
-    congestion_level=level,
-    signal_time=green_time,
-    recommendation=advice,
-    average_speed=avg_speed
-)
-
+        vehicle_count=vehicle.total,
+        density=metrics["density"],
+        congestion_level=metrics["congestion_level"],
+        signal_time=metrics["signal_time"],
+        recommendation=metrics["recommendation"],
+        average_speed=metrics["average_speed"]
+    )
 
     db.add(congestion)
     db.commit()
@@ -353,13 +365,13 @@ def analyse_congestion(
 
     return {
         "status": "Success",
-        "vehicle_count": total,
-        "density": density,
-        "congestion_level": level,
-        "average_speed": avg_speed,
-        "green_signal_time": green_time,
-        "recommendation": advice,
-        "message": message
+        "vehicle_count": vehicle.total,
+        "density": metrics["density"],
+        "congestion_level": metrics["congestion_level"],
+        "average_speed": metrics["average_speed"],
+        "green_signal_time": metrics["signal_time"],
+        "recommendation": metrics["recommendation"],
+        "message": metrics["message"]
     }
 
 
@@ -411,10 +423,47 @@ def live_dashboard(
         models.Congestion.id.desc()
     ).first()
 
+    # ==========================================================
+    # FIX 2: IMPROVED NULL SAFE DEFAULT RESPONSE
+    # ==========================================================
     if vehicle is None:
         return {
-            "status": "No Data"
+            "cars": 0,
+            "bikes": 0,
+            "buses": 0,
+            "trucks": 0,
+            "auto_rickshaw": 0,
+            "ambulance": 0,
+            "total_vehicles": 0,
+            "congestion_level": "LOW",
+            "signal_time": 30,
+            "density": 0,
+            "average_speed": 60,
+            "recommendation": "No traffic data available",
+            "prediction": "No Prediction",
+            "suggested_route": "Main Highway",
+            "estimated_delay": 0,
+            "has_emergency": False
         }
+
+    # ==========================================================
+    # FIX 3 & FIX 4: PREDICTION & ESTIMATED DELAY DYNAMIC LOGIC
+    # ==========================================================
+    prediction = "Traffic Normal"
+    estimated_delay = 0
+
+    if congestion:
+        if congestion.congestion_level == "CRITICAL":
+            prediction = "Heavy congestion expected in next 10 minutes"
+            estimated_delay = 30
+        elif congestion.congestion_level == "HIGH":
+            prediction = "Traffic likely to increase"
+            estimated_delay = 15
+        elif congestion.congestion_level == "MEDIUM":
+            prediction = "Moderate traffic expected"
+            estimated_delay = 5
+
+    metrics = utils.get_congestion_metrics(vehicle.total, ambulance_count=vehicle.ambulance)
 
     return {
         "cars": vehicle.cars,
@@ -424,11 +473,15 @@ def live_dashboard(
         "auto_rickshaw": vehicle.auto_rickshaw,
         "ambulance": vehicle.ambulance,
         "total_vehicles": vehicle.total,
-        "congestion_level": congestion.congestion_level if congestion else "LOW",
-        "signal_time": congestion.signal_time if congestion else 30,
-        "density": congestion.density if congestion else 0,
-        "average_speed": congestion.average_speed if congestion else 60,
-        "recommendation": congestion.recommendation if congestion else "Traffic Normal"
+        "congestion_level": congestion.congestion_level if congestion else metrics["congestion_level"],
+        "signal_time": congestion.signal_time if congestion else metrics["signal_time"],
+        "density": congestion.density if congestion else metrics["density"],
+        "average_speed": congestion.average_speed if congestion else metrics["average_speed"],
+        "recommendation": congestion.recommendation if congestion else metrics["recommendation"],
+        "prediction": prediction,
+        "suggested_route": metrics["suggested_route"],
+        "estimated_delay": estimated_delay,
+        "has_emergency": metrics["has_emergency"]
     }
 
 
@@ -580,15 +633,14 @@ def health():
         "ai_engine": "YOLOv8",
         "tracker": "ByteTrack"
     }
+
+
 @router.get("/live/test")
 def live_test(
     current_user: models.User = Depends(auth.officer_required)
 ):
-
     cap = connect_rtsp()
-
     success, frame = cap.read()
-
     cap.release()
 
     if not success:

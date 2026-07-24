@@ -1,0 +1,34 @@
+$kind: http-request
+name: login
+url: http://127.0.0.1:8000/auth/login
+method: POST
+body:
+  type: urlencoded
+  content:
+    username: keerthana
+    password: 2509keer
+scripts:
+  - type: afterResponse
+    code: "// Get response JSON\r
+
+      let response = pm.response.json();\r
+
+      \r
+
+      // Save token as a collection variable\r
+
+      pm.collectionVariables.set(\"token\", response.access_token);\r
+
+      \r
+
+      // Save token as an environment variable (optional)\r
+
+      pm.environment.set(\"token\", response.access_token);\r
+
+      \r
+
+      console.log(\"Token Saved Successfully\");\r
+
+      console.log(response.access_token);"
+    language: text/javascript
+order: 4372133997083350

@@ -1,0 +1,9 @@
+$kind: http-request
+name: process the video
+url: http://127.0.0.1:8000/detect/process/1
+method: POST
+auth:
+  type: bearer
+  credentials:
+    token: "{{token}}"
+order: 4405459912303683

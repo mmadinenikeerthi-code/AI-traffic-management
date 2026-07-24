@@ -2,8 +2,9 @@
    AI Traffic Management System - Dashboard Logic
    ========================================================================== */
 
+// 1. Declare chart variables at top-level scope
 let trafficChart = null;
-let vehiclePieChart = null;
+let pieChart = null;
 
 /**
  * Initialize Dashboard Data and Charts
@@ -15,6 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
 function initializeDashboard() {
     clearError();
     fetchDashboardData();
+
+    // Auto-refresh dashboard every 5 seconds
+    if (!window.dashboardInterval) {
+        window.dashboardInterval = setInterval(fetchDashboardData, 5000);
+    }
 }
 
 /**
@@ -23,8 +29,14 @@ function initializeDashboard() {
 async function fetchDashboardData() {
     const token = localStorage.getItem("access_token") || localStorage.getItem("token");
 
+    // 2. Handle missing token immediately
+    if (!token) {
+        window.location.href = "/login";
+        return;
+    }
+
     try {
-        const response = await fetch("/api/dashboard/metrics", {
+        const response = await fetch("/detect/live-dashboard", {
             method: "GET",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -37,7 +49,7 @@ async function fetchDashboardData() {
                 window.location.href = "/login";
                 return;
             }
-            throw new Error("Failed to load dashboard data from server.");
+            throw new Error("Failed to load live traffic data from server.");
         }
 
         const data = await response.json();
@@ -53,13 +65,13 @@ async function fetchDashboardData() {
  * Update UI Elements with API Response Data
  */
 function updateDashboardUI(data) {
-    // 1. Top Summary Cards
+    // Top Summary Cards
     setElementText("totalVehicles", data.total_vehicles || 0);
     setElementText("congestionLevel", data.congestion_level || "LOW");
     setElementText("signalTime", (data.signal_time || 30) + " Sec");
-    setElementText("ambulanceCount", data.ambulance_count || 0);
+    setElementText("ambulanceCount", data.ambulance || 0);
 
-    // 2. Vehicle Breakdown Cards
+    // Vehicle Breakdown Cards
     setElementText("cars", data.cars || 0);
     setElementText("bikes", data.bikes || 0);
     setElementText("buses", data.buses || 0);
@@ -67,27 +79,38 @@ function updateDashboardUI(data) {
     setElementText("autos", data.auto_rickshaw || 0);
     setElementText("ambulances", data.ambulance || 0);
 
-    // 3. AI Recommendations & Analytics
+    // AI Recommendations & Analytics
     setElementText("density", (data.density || 0) + "%");
-    setElementText("speed", (data.speed || 0) + " km/h");
-    setElementText("signalStatus", data.signal_status || "GREEN");
+    setElementText("speed", (data.average_speed || 0) + " km/h");
+    
+    // Dynamic Signal Status Display
+    let signalStatusText = "GREEN";
+    if (data.signal_time >= 120) {
+        signalStatusText = "CRITICAL";
+    } else if (data.signal_time >= 90) {
+        signalStatusText = "EXTENDED GREEN";
+    } else if (data.signal_time >= 60) {
+        signalStatusText = "MEDIUM";
+    }
+    setElementText("signalStatus", signalStatusText);
+
     setElementText("prediction", data.prediction || "Normal Traffic Flow");
 
-    if (data.ai_recommendation) {
+    if (data.recommendation) {
         const recBox = document.getElementById("recommendation");
-        if (recBox) recBox.innerText = data.ai_recommendation;
+        if (recBox) recBox.innerText = data.recommendation;
     }
 
-    // 4. Congestion Summary Table
+    // Congestion Summary Table
     setElementText("currentLevel", data.congestion_level || "LOW");
-    setElementText("roadUsage", (data.road_usage || 0) + "%");
+    setElementText("roadUsage", (data.density || 0) + "%");
     setElementText("delay", (data.estimated_delay || 0) + " Minutes");
     setElementText("route", data.suggested_route || "Main Highway");
 
-    // 5. Emergency Panel
+    // Emergency Panel
     const emergencyPanel = document.getElementById("emergencyPanel");
     if (emergencyPanel) {
-        if (data.ambulance_count > 0 || data.has_emergency) {
+        if (data.ambulance > 0 || data.has_emergency) {
             emergencyPanel.className = "alert alert-danger";
             emergencyPanel.innerHTML = "<strong>🚨 Priority Alert:</strong> Emergency Vehicle Detected! Clearing Route...";
         } else {
@@ -96,15 +119,14 @@ function updateDashboardUI(data) {
         }
     }
 
-    // 6. Update Recent Vehicle Table
+    // Update Recent Vehicle Table
     updateVehicleTable(data);
 
-    // 7. Update Live Charts
+    // Update Live Charts Safely
+    updatePieChart(data);
     if (data.chart_labels && data.chart_values) {
         updateTrafficChart(data.chart_labels, data.chart_values);
     }
-
-    updatePieChart(data);
 }
 
 /**
@@ -137,7 +159,35 @@ function updateVehicleTable(data) {
 }
 
 /**
- * Helper to Safely Set Text Content
+ * Update Vehicle Doughnut/Pie Chart safely
+ */
+function updatePieChart(data) {
+    if (typeof pieChart !== "undefined" && pieChart && pieChart.data) {
+        pieChart.data.datasets[0].data = [
+            data.cars || 0,
+            data.bikes || 0,
+            data.buses || 0,
+            data.trucks || 0,
+            data.auto_rickshaw || 0,
+            data.ambulance || 0
+        ];
+        pieChart.update();
+    }
+}
+
+/**
+ * Update Traffic Trend Line Chart safely
+ */
+function updateTrafficChart(labels, values) {
+    if (typeof trafficChart !== "undefined" && trafficChart && trafficChart.data) {
+        trafficChart.data.labels = labels;
+        trafficChart.data.datasets[0].data = values;
+        trafficChart.update();
+    }
+}
+
+/**
+ * Helper Utilities
  */
 function setElementText(id, text) {
     const element = document.getElementById(id);
@@ -146,9 +196,6 @@ function setElementText(id, text) {
     }
 }
 
-/**
- * Display Error Messages
- */
 function showError(message) {
     const errorBox = document.getElementById("errorBox");
     if (errorBox) {
@@ -161,9 +208,6 @@ function showError(message) {
     }
 }
 
-/**
- * Clear Error Messages
- */
 function clearError() {
     const errorBox = document.getElementById("errorBox");
     if (errorBox) {

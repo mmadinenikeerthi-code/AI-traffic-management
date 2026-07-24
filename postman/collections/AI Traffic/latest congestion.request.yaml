@@ -1,0 +1,9 @@
+$kind: http-request
+name: latest congestion
+url: http://127.0.0.1:8000/detect/congestion/latest
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{token}}"
+order: 4471961450218861

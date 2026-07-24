@@ -1,0 +1,18 @@
+$kind: http-request
+name: upload video
+url: http://127.0.0.1:8000/detect/upload
+method: POST
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src:
+        - /C:/Users/madin/Downloads/videoplayback.mp4
+      description: ""
+      disabled: false
+auth:
+  type: bearer
+  credentials:
+    token: "{{token}}"
+order: 4384372091127702
