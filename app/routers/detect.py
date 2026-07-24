@@ -28,7 +28,11 @@ from app import utils
 from app import config
 from app.database import get_db
 
-router = APIRouter()
+router = APIRouter(tags=["Detection"])
+
+# Ensure upload and output directories exist on system start
+os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(config.OUTPUT_FOLDER, exist_ok=True)
 
 # ==========================================================
 # LOAD AI MODEL & TRACKER
@@ -92,27 +96,35 @@ async def upload_video(
             detail="Only MP4, AVI, MOV and MKV videos are allowed."
         )
 
-    filename, filepath = utils.save_uploaded_video(file)
+    try:
+        filename, filepath = utils.save_uploaded_video(file)
 
-    video = models.UploadedVideo(
-        filename=filename,
-        filepath=filepath,
-        processed=False,
-        uploaded_by=current_user.id,
-        upload_time=datetime.utcnow()
-    )
+        video = models.UploadedVideo(
+            filename=filename,
+            filepath=filepath,
+            processed=False,
+            uploaded_by=current_user.id,
+            upload_time=datetime.now()
+        )
 
-    db.add(video)
-    db.commit()
-    db.refresh(video)
+        db.add(video)
+        db.commit()
+        db.refresh(video)
 
-    return {
-        "message": "Video uploaded successfully.",
-        "video_id": video.id,
-        "filename": filename,
-        "uploaded_by": current_user.username,
-        "processed": False
-    }
+        return {
+            "message": "Video uploaded successfully.",
+            "id": video.id,
+            "video_id": video.id,
+            "filename": filename,
+            "uploaded_by": current_user.username,
+            "processed": False
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save video: {str(e)}"
+        )
 
 
 @router.get("/videos")
@@ -178,7 +190,7 @@ def delete_video(
 
 
 # ==========================================================
-# PART 2: YOLOv8 + ByteTrack Vehicle Tracking
+# PART 2: Optimized YOLOv8 + ByteTrack Vehicle Tracking
 # ==========================================================
 
 @router.post("/process/{video_id}")
@@ -201,7 +213,7 @@ def process_video(
     if not capture.isOpened():
         raise HTTPException(
             status_code=500,
-            detail="Cannot open video."
+            detail="Cannot open video file."
         )
 
     width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -226,13 +238,24 @@ def process_video(
     frame_count = 0
     counted_ids.clear()
 
+    # Frame skipping to accelerate detection speed
+    FRAME_SKIP = 5
+
     while True:
         success, frame = capture.read()
         if not success:
             break
 
         frame_count += 1
-        results = model(frame, verbose=False)[0]
+        
+        # Skip frames for faster throughput
+        if frame_count % FRAME_SKIP != 0:
+            continue
+
+        # Resize frame for optimized YOLO inference
+        resized_frame = cv2.resize(frame, (640, 640))
+
+        results = model(resized_frame, verbose=False)[0]
         detections = sv.Detections.from_ultralytics(results)
         detections = tracker.update_with_detections(detections)
 
@@ -249,7 +272,7 @@ def process_video(
                 counted_ids.add(tracker_id)
                 if class_name == "car":
                     cars += 1
-                elif class_name == "motorcycle":
+                elif class_name in ["motorcycle", "bike"]:
                     bikes += 1
                 elif class_name == "bus":
                     buses += 1
@@ -259,7 +282,7 @@ def process_video(
                     persons += 1
                 elif class_name == "ambulance":
                     ambulance += 1
-                elif class_name == "auto":
+                elif class_name in ["auto", "autorickshaw"]:
                     auto += 1
 
         annotated = frame.copy()
@@ -288,9 +311,7 @@ def process_video(
     db.commit()
     db.refresh(vehicle)
 
-    # ==========================================================
-    # FIX 1: AUTO-GENERATE CONGESTION RECORD IMMEDIATELY
-    # ==========================================================
+    # AUTO-GENERATE CONGESTION RECORD IMMEDIATELY
     level, green_time, message = utils.congestion_level(total)
     density = utils.density_percentage(total)
     avg_speed = utils.average_speed(level)
@@ -423,9 +444,7 @@ def live_dashboard(
         models.Congestion.id.desc()
     ).first()
 
-    # ==========================================================
-    # FIX 2: IMPROVED NULL SAFE DEFAULT RESPONSE
-    # ==========================================================
+    # NULL SAFE DEFAULT RESPONSE
     if vehicle is None:
         return {
             "cars": 0,
@@ -443,12 +462,13 @@ def live_dashboard(
             "prediction": "No Prediction",
             "suggested_route": "Main Highway",
             "estimated_delay": 0,
-            "has_emergency": False
+            "has_emergency": False,
+            "chart_labels": [],
+            "chart_values": [],
+            "reports": []
         }
 
-    # ==========================================================
-    # FIX 3 & FIX 4: PREDICTION & ESTIMATED DELAY DYNAMIC LOGIC
-    # ==========================================================
+    # PREDICTION & ESTIMATED DELAY DYNAMIC LOGIC
     prediction = "Traffic Normal"
     estimated_delay = 0
 
@@ -465,6 +485,26 @@ def live_dashboard(
 
     metrics = utils.get_congestion_metrics(vehicle.total, ambulance_count=vehicle.ambulance)
 
+    # Historical trend payload for line chart (Last 7 runs)
+    recent_records = db.query(models.VehicleCount).order_by(models.VehicleCount.id.desc()).limit(7).all()
+    recent_records.reverse()
+
+    chart_labels = [r.created_at.strftime("%H:%M:%S") if hasattr(r, 'created_at') and r.created_at else f"Run #{r.id}" for r in recent_records]
+    chart_values = [r.total for r in recent_records]
+
+    current_congestion = congestion.congestion_level if congestion else metrics["congestion_level"]
+    avg_speed = congestion.average_speed if congestion else metrics["average_speed"]
+    sig_time = congestion.signal_time if congestion else metrics["signal_time"]
+
+    # Reports table payload format
+    reports = [
+        {"description": "Total Vehicles Processed", "value": str(vehicle.total)},
+        {"description": "Congestion Level", "value": str(current_congestion)},
+        {"description": "Average Speed", "value": f"{avg_speed} km/h"},
+        {"description": "Recommended Signal Time", "value": f"{sig_time} Sec"},
+        {"description": "Estimated Delay", "value": f"{estimated_delay} Minutes"}
+    ]
+
     return {
         "cars": vehicle.cars,
         "bikes": vehicle.bikes,
@@ -473,15 +513,18 @@ def live_dashboard(
         "auto_rickshaw": vehicle.auto_rickshaw,
         "ambulance": vehicle.ambulance,
         "total_vehicles": vehicle.total,
-        "congestion_level": congestion.congestion_level if congestion else metrics["congestion_level"],
-        "signal_time": congestion.signal_time if congestion else metrics["signal_time"],
+        "congestion_level": current_congestion,
+        "signal_time": sig_time,
         "density": congestion.density if congestion else metrics["density"],
-        "average_speed": congestion.average_speed if congestion else metrics["average_speed"],
+        "average_speed": avg_speed,
         "recommendation": congestion.recommendation if congestion else metrics["recommendation"],
         "prediction": prediction,
         "suggested_route": metrics["suggested_route"],
         "estimated_delay": estimated_delay,
-        "has_emergency": metrics["has_emergency"]
+        "has_emergency": metrics["has_emergency"],
+        "chart_labels": chart_labels,
+        "chart_values": chart_values,
+        "reports": reports
     }
 
 

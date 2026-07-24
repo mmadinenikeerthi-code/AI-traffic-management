@@ -174,13 +174,14 @@ Dashboard | AI Traffic Management System
         </div>
     </div>
 
-    <!-- Live Camera & AI Recommendation -->
+    <!-- Live Camera Feed, Upload Video & AI Recommendation -->
     <div class="row mt-3">
+        <!-- Left Column: Camera Feed & Video Upload -->
         <div class="col-lg-7 mb-3">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-video text-danger"></i>
+                        <i class="fas fa-video text-danger me-1"></i>
                         Live Camera Feed
                     </h4>
                 </div>
@@ -189,17 +190,41 @@ Dashboard | AI Traffic Management System
                         src="https://placehold.co/900x500?text=Live+Traffic+Camera"
                         id="liveCamera"
                         class="img-fluid rounded"
-                        style="width:100%; height:420px; object-fit:cover;"
+                        style="width:100%; height:320px; object-fit:cover;"
                         alt="Live Camera">
+                </div>
+            </div>
+
+            <!-- Upload Traffic Video Card -->
+            <div class="card shadow-sm mt-3">
+                <div class="card-header bg-white fw-bold">
+                    <i class="fas fa-upload text-primary me-1"></i>
+                    Upload Traffic Video
+                </div>
+                <div class="card-body">
+                    <input
+                        type="file"
+                        id="videoFile"
+                        accept="video/*"
+                        class="form-control">
+
+                    <button
+                        class="btn btn-primary mt-3 w-100 fw-semibold"
+                        onclick="uploadVideo()">
+                        <i class="fas fa-cloud-upload-alt me-1"></i> Upload & Process Video
+                    </button>
+
+                    <div id="uploadStatus" class="mt-2 fw-medium"></div>
                 </div>
             </div>
         </div>
 
+        <!-- Right Column: AI Recommendation -->
         <div class="col-lg-5 mb-3">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-brain text-primary"></i>
+                        <i class="fas fa-brain text-primary me-1"></i>
                         AI Recommendation
                     </h4>
                 </div>
@@ -233,13 +258,13 @@ Dashboard | AI Traffic Management System
         </div>
     </div>
 
-    <!-- Emergency & Congestion -->
+    <!-- Emergency & Congestion Summary -->
     <div class="row mt-3">
         <div class="col-lg-6 mb-3">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-ambulance text-danger"></i>
+                        <i class="fas fa-ambulance text-danger me-1"></i>
                         Emergency Vehicle
                     </h4>
                 </div>
@@ -276,7 +301,7 @@ Dashboard | AI Traffic Management System
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-road text-warning"></i>
+                        <i class="fas fa-road text-warning me-1"></i>
                         Congestion Summary
                     </h4>
                 </div>
@@ -312,7 +337,7 @@ Dashboard | AI Traffic Management System
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-server text-success"></i>
+                        <i class="fas fa-server text-success me-1"></i>
                         System Status
                     </h4>
                 </div>
@@ -350,7 +375,7 @@ Dashboard | AI Traffic Management System
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-list text-primary"></i>
+                        <i class="fas fa-list text-primary me-1"></i>
                         Recent Vehicle Detection
                     </h4>
                 </div>
@@ -376,7 +401,7 @@ Dashboard | AI Traffic Management System
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-bell text-danger"></i>
+                        <i class="fas fa-bell text-danger me-1"></i>
                         Live Alerts
                     </h4>
                 </div>
@@ -395,7 +420,7 @@ Dashboard | AI Traffic Management System
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-file-alt text-success"></i>
+                        <i class="fas fa-file-alt text-success me-1"></i>
                         Traffic Reports
                     </h4>
                 </div>
@@ -439,24 +464,25 @@ Dashboard | AI Traffic Management System
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- Dashboard JS -->
+<!-- External Dashboard Logic -->
 <script src="/static/js/dashboard.js"></script>
 
 <script>
-let trafficChart;
-let pieChart;
+// Declare as global variables attached to window so dashboard.js can access them safely
+window.trafficChart = null;
+window.pieChart = null;
 
 window.addEventListener("DOMContentLoaded", () => {
 
-    // Traffic Line Chart
+    // 1. Initialize Line Chart
     const trafficCtx = document.getElementById("trafficChart");
     if (trafficCtx) {
-        trafficChart = new Chart(trafficCtx, {
+        window.trafficChart = new Chart(trafficCtx, {
             type: "line",
             data: {
                 labels: [],
                 datasets: [{
-                    label: "Vehicle Count",
+                    label: "Vehicle Count Trend",
                     data: [],
                     borderWidth: 3,
                     borderColor: '#2563eb',
@@ -473,10 +499,10 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Vehicle Pie Chart
+    // 2. Initialize Pie/Doughnut Chart
     const vehicleCtx = document.getElementById("vehicleChart");
     if (vehicleCtx) {
-        pieChart = new Chart(vehicleCtx, {
+        window.pieChart = new Chart(vehicleCtx, {
             type: "doughnut",
             data: {
                 labels: ["Cars", "Bikes", "Buses", "Trucks", "Auto", "Ambulance"],
@@ -495,40 +521,10 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    initializeDashboard();
-});
-
-function updateTrafficChart(labels, values) {
-    if (!trafficChart) return;
-    trafficChart.data.labels = labels;
-    trafficChart.data.datasets[0].data = values;
-    trafficChart.update();
-}
-
-function updatePieChart(data) {
-    if (!pieChart) return;
-    pieChart.data.datasets[0].data = [
-        data.cars || 0,
-        data.bikes || 0,
-        data.buses || 0,
-        data.trucks || 0,
-        data.auto_rickshaw || 0,
-        data.ambulance || 0
-    ];
-    pieChart.update();
-}
-
-function showError(message) {
-    const box = document.getElementById("errorBox");
-    if (box) {
-        box.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${message}</div>`;
+    if (typeof initializeDashboard === 'function') {
+        initializeDashboard();
     }
-}
-
-function clearError() {
-    const box = document.getElementById("errorBox");
-    if (box) box.innerHTML = "";
-}
+});
 
 function sessionExpired() {
     const token = localStorage.getItem("access_token") || localStorage.getItem("token");

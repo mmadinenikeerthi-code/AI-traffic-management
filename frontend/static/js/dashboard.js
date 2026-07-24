@@ -2,12 +2,8 @@
    AI Traffic Management System - Dashboard Logic
    ========================================================================== */
 
-// 1. Declare chart variables at top-level scope
-let trafficChart = null;
-let pieChart = null;
-
 /**
- * Initialize Dashboard Data and Charts
+ * Initialize Dashboard Data and Timers on Page Load
  */
 document.addEventListener("DOMContentLoaded", () => {
     initializeDashboard();
@@ -17,7 +13,7 @@ function initializeDashboard() {
     clearError();
     fetchDashboardData();
 
-    // Auto-refresh dashboard every 5 seconds
+    // Auto-refresh dashboard metrics every 5 seconds
     if (!window.dashboardInterval) {
         window.dashboardInterval = setInterval(fetchDashboardData, 5000);
     }
@@ -29,7 +25,7 @@ function initializeDashboard() {
 async function fetchDashboardData() {
     const token = localStorage.getItem("access_token") || localStorage.getItem("token");
 
-    // 2. Handle missing token immediately
+    // Handle missing authentication token
     if (!token) {
         window.location.href = "/login";
         return;
@@ -107,7 +103,7 @@ function updateDashboardUI(data) {
     setElementText("delay", (data.estimated_delay || 0) + " Minutes");
     setElementText("route", data.suggested_route || "Main Highway");
 
-    // Emergency Panel
+    // Emergency Panel Alert
     const emergencyPanel = document.getElementById("emergencyPanel");
     if (emergencyPanel) {
         if (data.ambulance > 0 || data.has_emergency) {
@@ -119,8 +115,11 @@ function updateDashboardUI(data) {
         }
     }
 
-    // Update Recent Vehicle Table
+    // Update Vehicle Count Table
     updateVehicleTable(data);
+
+    // Render Traffic Reports Table
+    updateReportTable(data);
 
     // Update Live Charts Safely
     updatePieChart(data);
@@ -159,6 +158,34 @@ function updateVehicleTable(data) {
 }
 
 /**
+ * Populate Traffic Reports Table
+ */
+function updateReportTable(data) {
+    const reportTable = document.getElementById("reportTable");
+    if (!reportTable) return;
+
+    if (data.reports && Array.isArray(data.reports) && data.reports.length > 0) {
+        let reportHtml = "";
+        data.reports.forEach(item => {
+            reportHtml += `
+                <tr>
+                    <td><strong>${item.description}</strong></td>
+                    <td>${item.value}</td>
+                </tr>`;
+        });
+        reportTable.innerHTML = reportHtml;
+    } else {
+        // Fallback summary report when explicit backend array is absent
+        reportTable.innerHTML = `
+            <tr><td><strong>Total Processed Vehicles</strong></td><td>${data.total_vehicles || 0}</td></tr>
+            <tr><td><strong>Congestion Level</strong></td><td>${data.congestion_level || "LOW"}</td></tr>
+            <tr><td><strong>Average Traffic Speed</strong></td><td>${data.average_speed || 0} km/h</td></tr>
+            <tr><td><strong>Estimated Route Delay</strong></td><td>${data.estimated_delay || 0} Mins</td></tr>
+        `;
+    }
+}
+
+/**
  * Update Vehicle Doughnut/Pie Chart safely
  */
 function updatePieChart(data) {
@@ -183,6 +210,90 @@ function updateTrafficChart(labels, values) {
         trafficChart.data.labels = labels;
         trafficChart.data.datasets[0].data = values;
         trafficChart.update();
+    }
+}
+
+/**
+ * Video Upload & YOLO Detection Processing Function
+ */
+async function uploadVideo() {
+    const fileInput = document.getElementById('videoFile');
+    const statusBox = document.getElementById('uploadStatus');
+
+    if (!fileInput || fileInput.files.length === 0) {
+        alert("Please select a video file first.");
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const token = localStorage.getItem("access_token") || localStorage.getItem("token");
+
+    if (!token) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        // UI Uploading Status
+        if (statusBox) {
+            statusBox.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i> Uploading video...</span>`;
+        }
+
+        // 1. Upload video to FastAPI
+        const uploadRes = await fetch('/detect/upload', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (!uploadRes.ok) {
+            if (uploadRes.status === 401) throw new Error("Unauthorized. Please log in again.");
+            throw new Error("Video upload failed.");
+        }
+
+        const uploadData = await uploadRes.json();
+        const videoId = uploadData.video_id || uploadData.id;
+
+        if (!videoId) {
+            throw new Error("Server did not return a valid video ID.");
+        }
+
+        // UI Processing Status
+        if (statusBox) {
+            statusBox.innerHTML = `<span class="text-warning"><i class="fas fa-spinner fa-spin me-1"></i> Running YOLO detection... (this may take a moment)</span>`;
+        }
+
+        // 2. Trigger YOLO processing on uploaded video ID
+        const processRes = await fetch(`/detect/process/${videoId}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!processRes.ok) {
+            throw new Error("YOLO video processing failed server-side.");
+        }
+
+        // Success Feedback
+        if (statusBox) {
+            statusBox.innerHTML = `<span class="text-success"><i class="fas fa-check-circle me-1"></i> Detection Complete! Refreshing dashboard...</span>`;
+        }
+
+        // 3. Re-fetch dashboard stats to get updated numbers from PostgreSQL
+        fetchDashboardData();
+
+    } catch (err) {
+        console.error("Upload/Processing error:", err);
+        if (statusBox) {
+            statusBox.innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i> ${err.message}</span>`;
+        }
     }
 }
 

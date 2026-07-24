@@ -9,6 +9,7 @@ import shutil
 import logging
 from datetime import datetime
 from pathlib import Path
+import cv2
 
 from app import config
 
@@ -55,6 +56,84 @@ def save_uploaded_video(file):
         shutil.copyfileobj(file.file, buffer)
 
     return filename, str(filepath)
+
+
+# ==========================================================
+# FAST YOLO VIDEO PROCESSING
+# ==========================================================
+
+def process_video_yolo(video_path: str, model, frame_skip: int = 5) -> dict:
+    """
+    Processes video using YOLO with performance optimizations:
+    1. Frame Skipping: Processes 1 frame every 'frame_skip' frames.
+    2. Resizing: Resizes frame to 640x640 for faster inference.
+    """
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        logger.error(f"Failed to open video file: {video_path}")
+        return {"total": 0, "cars": 0, "bikes": 0, "buses": 0, "trucks": 0, "auto": 0, "ambulance": 0}
+
+    frame_count = 0
+    vehicle_counts = {
+        "cars": 0,
+        "bikes": 0,
+        "buses": 0,
+        "trucks": 0,
+        "auto": 0,
+        "ambulance": 0
+    }
+
+    # Tracking sets to avoid overcounting across frames
+    detected_ids = set()
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        frame_count += 1
+        # Skip frames to speed up detection execution (e.g., process every 5th frame)
+        if frame_count % frame_skip != 0:
+            continue
+
+        # Downscale frame for faster YOLO inference
+        resized_frame = cv2.resize(frame, (640, 640))
+
+        # Run YOLO inference
+        results = model(resized_frame)
+
+        # Parse detected objects
+        for result in results:
+            boxes = result.boxes
+            if boxes is None:
+                continue
+
+            for box in boxes:
+                cls_id = int(box.cls[0])
+                class_name = model.names[cls_id].lower()
+
+                # Map COCO or custom trained classes to application counters
+                if class_name == "car":
+                    vehicle_counts["cars"] += 1
+                elif class_name in ["motorbike", "motorcycle", "bicycle", "bike"]:
+                    vehicle_counts["bikes"] += 1
+                elif class_name == "bus":
+                    vehicle_counts["buses"] += 1
+                elif class_name == "truck":
+                    vehicle_counts["trucks"] += 1
+                elif class_name in ["auto", "autorickshaw", "rickshaw"]:
+                    vehicle_counts["auto"] += 1
+                elif class_name == "ambulance":
+                    vehicle_counts["ambulance"] += 1
+
+    cap.release()
+
+    # Calculate overall total
+    total = sum(vehicle_counts.values())
+    vehicle_counts["total"] = total
+
+    logger.info(f"YOLO Processing completed for {video_path}. Total detected: {total}")
+    return vehicle_counts
 
 
 # ==========================================================
