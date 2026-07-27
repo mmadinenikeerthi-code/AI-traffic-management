@@ -5,66 +5,100 @@ Dashboard | AI Traffic Management System
 {% endblock %}
 
 {% block content %}
+<!-- Leaflet & Heatmap CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    #map {
+        height: 450px;
+        width: 100%;
+        border-radius: 8px;
+    }
+</style>
+
 <div class="container-fluid">
 
     <!-- ========================================= -->
-    <!-- Page Header -->
+    <!-- Page Header & Actions -->
     <!-- ========================================= -->
     <div class="row mb-4 align-items-center">
-        <div class="col-lg-8 col-md-7">
+        <div class="col-lg-7 col-md-6">
             <h2 class="fw-bold m-0">
-                <i class="fas fa-chart-line text-primary"></i>
-                Dashboard
+                <i class="fas fa-traffic-light text-primary"></i>
+                AI Traffic Control Center & Dashboard
             </h2>
             <p class="text-muted m-0">
-                Welcome to AI-Based Traffic Management & Congestion Detection System
+                Welcome to AI-Based Traffic Management, Congestion Detection & Real-Time Monitoring System
             </p>
         </div>
-        <div class="col-lg-4 col-md-5 text-md-end mt-3 mt-md-0">
+        <div class="col-lg-5 col-md-6 text-md-end mt-3 mt-md-0">
+            <button class="btn btn-danger me-2" onclick="triggerAccidentModal()">
+                <i class="fas fa-car-crash me-1"></i> Report Accident
+            </button>
+            <a href="/reports/export/csv" class="btn btn-outline-success me-2">
+                <i class="fas fa-file-csv me-1"></i> Export CSV Report
+            </a>
             <button class="btn btn-primary" onclick="loadDashboard()">
-                <i class="fas fa-sync"></i> Refresh
+                <i class="fas fa-sync me-1"></i> Refresh Data
             </button>
         </div>
     </div>
 
     <!-- ========================================= -->
-    <!-- Statistics Cards -->
+    <!-- Statistics Cards (KPIs) -->
     <!-- ========================================= -->
     <div class="row g-3">
-        <div class="col-lg-3 col-md-6">
+        <div class="col-lg-2 col-md-4 col-sm-6">
             <div class="dashboard-card card p-3 shadow-sm border-0">
-                <h5 class="text-muted">
-                    <i class="fas fa-car text-primary"></i> Total Vehicles
-                </h5>
+                <h6 class="text-muted">
+                    <i class="fas fa-car text-primary me-1"></i> Total Vehicles
+                </h6>
                 <h2 id="totalVehicles" class="fw-bold my-2">0</h2>
                 <small class="text-success"><i class="fas fa-circle-notch fa-spin"></i> Live Detection</small>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6">
+        <div class="col-lg-2 col-md-4 col-sm-6">
             <div class="dashboard-card card p-3 shadow-sm border-0">
-                <h5 class="text-muted">
-                    <i class="fas fa-road text-warning"></i> Congestion Level
-                </h5>
+                <h6 class="text-muted">
+                    <i class="fas fa-road text-warning me-1"></i> Congestion Level
+                </h6>
                 <h2 id="congestionLevel" class="fw-bold my-2 text-success">LOW</h2>
                 <small class="text-muted">AI Prediction</small>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6">
+        <div class="col-lg-2 col-md-4 col-sm-6">
             <div class="dashboard-card card p-3 shadow-sm border-0">
-                <h5 class="text-muted">
-                    <i class="fas fa-traffic-light text-success"></i> Signal Time
-                </h5>
+                <h6 class="text-muted">
+                    <i class="fas fa-traffic-light text-success me-1"></i> Signal Time
+                </h6>
                 <h2 id="signalTime" class="fw-bold my-2">30 Sec</h2>
                 <small class="text-muted">Adaptive Control</small>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6">
+        <div class="col-lg-2 col-md-4 col-sm-6">
             <div class="dashboard-card card p-3 shadow-sm border-0">
-                <h5 class="text-muted">
-                    <i class="fas fa-ambulance text-danger"></i> Emergency
-                </h5>
+                <h6 class="text-muted">
+                    <i class="fas fa-ambulance text-danger me-1"></i> Emergency
+                </h6>
                 <h2 id="ambulanceCount" class="fw-bold my-2 text-danger">0</h2>
                 <small class="text-muted">Priority Vehicles</small>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="dashboard-card card p-3 shadow-sm border-0">
+                <h6 class="text-muted">
+                    <i class="fas fa-bell text-danger me-1"></i> Active Alerts
+                </h6>
+                <h2 id="activeAlerts" class="fw-bold my-2 text-danger">0</h2>
+                <small class="text-muted">System Notifications</small>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="dashboard-card card p-3 shadow-sm border-0">
+                <h6 class="text-muted">
+                    <i class="fas fa-car-crash text-dark me-1"></i> Accidents Logged
+                </h6>
+                <h2 id="accidentsLogged" class="fw-bold my-2 text-dark">0</h2>
+                <small class="text-muted">Incident Analytics</small>
             </div>
         </div>
     </div>
@@ -118,6 +152,21 @@ Dashboard | AI Traffic Management System
     </div>
 
     <!-- ========================================= -->
+    <!-- OpenStreetMap Traffic Heatmap Section -->
+    <!-- ========================================= -->
+    <div class="row mt-4">
+        <div class="col-lg-12">
+            <div class="dashboard-card card p-4 shadow-sm border-0">
+                <h4 class="fw-bold mb-3">
+                    <i class="fas fa-map-marked-alt text-danger"></i> Real-Time Traffic Heatmap
+                </h4>
+                <hr>
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
     <!-- Charts Section -->
     <!-- ========================================= -->
     <div class="row mt-4 g-4">
@@ -161,7 +210,7 @@ Dashboard | AI Traffic Management System
         <div class="col-lg-5">
             <div class="dashboard-card card p-4 shadow-sm border-0 h-100">
                 <h4 class="fw-bold mb-3">
-                    <i class="fas fa-brain text-primary"></i> AI Recommendation
+                    <i class="fas fa-brain text-primary"></i> AI Recommendation Engine
                 </h4>
                 <hr>
                 <div class="alert alert-info py-3" id="recommendation">
@@ -253,7 +302,7 @@ Dashboard | AI Traffic Management System
     </div>
 
     <!-- ========================================= -->
-    <!-- Tables: Recent Detections & Reports -->
+    <!-- Tables: Recent Detections & Live Alerts -->
     <!-- ========================================= -->
     <div class="row mt-4 g-4">
         <div class="col-lg-8">
@@ -290,8 +339,10 @@ Dashboard | AI Traffic Management System
                 </h4>
                 <hr>
                 <div id="alertPanel">
-                    <div class="alert alert-success m-0">
-                        <i class="fas fa-shield-alt me-2"></i> System Running Normally
+                    <div id="alertsContainer" class="d-flex flex-column gap-2">
+                        <div class="alert alert-success m-0">
+                            <i class="fas fa-shield-alt me-2"></i> System Running Normally
+                        </div>
                     </div>
                 </div>
             </div>
@@ -331,7 +382,7 @@ Dashboard | AI Traffic Management System
     </div>
 
     <!-- ========================================= -->
-    <!-- Quick Actions -->
+    <!-- Quick System Actions -->
     <!-- ========================================= -->
     <div class="row mt-4 mb-4">
         <div class="col-lg-12">
@@ -350,6 +401,9 @@ Dashboard | AI Traffic Management System
                     </a>
                     <a href="/analytics" class="btn btn-outline-info text-dark">
                         <i class="fas fa-chart-pie me-1"></i> View Analytics
+                    </a>
+                    <a href="/reports/export/csv" class="btn btn-outline-secondary">
+                        <i class="fas fa-file-csv me-1"></i> Export CSV Report
                     </a>
                 </div>
             </div>
@@ -413,11 +467,37 @@ Dashboard | AI Traffic Management System
 {% endblock %}
 
 {% block javascript %}
-<!-- Chart.js and Custom JS loading -->
+<!-- Chart.js and Leaflet Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="/static/js/dashboard.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
 <script>
+// =========================================
+// Initialize Leaflet Map & Heatmap
+// =========================================
+const map = L.map('map').setView([12.9716, 77.5946], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+let heatLayer = null;
+
+async function loadHeatmapData() {
+    try {
+        const res = await fetch('/analytics/heatmap-data');
+        if (!res.ok) return;
+        const points = await res.json();
+        
+        if (heatLayer) map.removeLayer(heatLayer);
+        if (points && points.length > 0) {
+            heatLayer = L.heatLayer(points, { radius: 25, blur: 15, maxZoom: 17 }).addTo(map);
+        }
+    } catch (err) {
+        console.warn("Heatmap fetch error:", err);
+    }
+}
+
 // =========================================
 // Initialize Charts
 // =========================================
@@ -446,7 +526,7 @@ const vehicleCtx = document.getElementById("vehicleChart").getContext('2d');
 const vehicleChart = new Chart(vehicleCtx, {
     type: "doughnut",
     data: {
-        labels: ["Cars", "Bikes", "Bus", "Truck", "Auto"],
+        labels: ["Cars", "Bikes", "Buses", "Trucks", "Autos"],
         datasets: [{
             data: [40, 30, 10, 10, 10],
             backgroundColor: ["#0d6efd", "#ffc107", "#198754", "#dc3545", "#0dcaf0"]
@@ -458,18 +538,119 @@ const vehicleChart = new Chart(vehicleCtx, {
     }
 });
 
+function updateCharts(cars, bikes, buses, trucks, autos) {
+    vehicleChart.data.datasets[0].data = [cars, bikes, buses, trucks, autos];
+    vehicleChart.update();
+}
+
+// =========================================
+// Fetch Alerts & System Notifications
+// =========================================
+async function loadAlerts() {
+    try {
+        const res = await fetch('/alerts');
+        if (!res.ok) return;
+        const alerts = await res.json();
+        const container = document.getElementById("alertsContainer");
+        
+        if (!alerts || alerts.length === 0) {
+            container.innerHTML = '<div class="alert alert-success m-0"><i class="fas fa-shield-alt me-2"></i> System Running Normally</div>';
+            return;
+        }
+
+        container.innerHTML = alerts.slice(0, 5).map(alert => `
+            <div class="alert alert-${alert.severity === 'High' ? 'danger' : 'warning'} shadow-sm m-0 p-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <strong class="small"><i class="fas fa-exclamation-triangle me-1"></i>${alert.alert_type || alert.title || 'Alert'} (${alert.location || 'Location'})</strong>
+                    <small class="text-muted">${new Date(alert.created_at).toLocaleTimeString()}</small>
+                </div>
+                <div class="small mt-1">${alert.message || alert.description || ''}</div>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.warn("Alerts fetch error:", e);
+    }
+}
+
+// =========================================
+// Fetch Traffic Status & Recommendation Engine
+// =========================================
+async function loadTrafficStatus() {
+    try {
+        const res = await fetch('/traffic-status?vehicle_count=45&emergency_count=0');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        document.getElementById("signalTime").innerText = data.signal_time + " Sec";
+        const recBox = document.getElementById("recommendation");
+        if (recBox) {
+            recBox.innerHTML = `<i class="fas fa-robot me-2"></i>${data.recommendation}`;
+        }
+    } catch (e) {
+        console.warn("Traffic status fetch error:", e);
+    }
+}
+
+// =========================================
+// Fetch Analytics KPIs
+// =========================================
+async function loadAnalyticsKPIs() {
+    try {
+        const res = await fetch('/analytics/kpis');
+        if (!res.ok) return;
+        const kpi = await res.json();
+        
+        if (kpi.active_alerts !== undefined) {
+            document.getElementById("activeAlerts").innerText = kpi.active_alerts;
+        }
+        if (kpi.total_accidents !== undefined) {
+            document.getElementById("accidentsLogged").innerText = kpi.total_accidents;
+        }
+        if (kpi.total_vehicles_detected !== undefined && kpi.total_vehicles_detected > 0) {
+            document.getElementById("totalVehicles").innerText = kpi.total_vehicles_detected;
+        }
+    } catch (e) {
+        console.warn("KPI fetch error:", e);
+    }
+}
+
+// =========================================
+// Manual Accident Trigger
+// =========================================
+async function triggerAccidentModal() {
+    const location = prompt("Enter Accident Location:", "Junction B");
+    if (!location) return;
+
+    try {
+        const res = await fetch('/accident', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ location: location, severity: "High" })
+        });
+        if (res.ok) {
+            alert("Accident Alert Logged Successfully!");
+            loadDashboard();
+        }
+    } catch (e) {
+        alert("Failed to log accident alert.");
+    }
+}
+
 // =========================================
 // API & Data Synchronization Loop
 // =========================================
 async function loadDashboard() {
+    await loadAnalyticsKPIs();
+    await loadTrafficStatus();
+    await loadAlerts();
+    await loadHeatmapData();
+
     try {
-        // Fetch dashboard data from your FastAPI backend
         const response = await fetch('/dashboard/stats');
-        if (!response.ok) throw new Error("Could not load backend data");
+        if (!response.ok) throw new Error("Could not load backend stats");
         
         const data = await response.json();
         
-        // Dynamic UI Updates
         document.getElementById("totalVehicles").innerText = data.total_vehicles || 0;
         document.getElementById("cars").innerText = data.cars || 0;
         document.getElementById("bikes").innerText = data.bikes || 0;
@@ -479,21 +660,28 @@ async function loadDashboard() {
         document.getElementById("ambulances").innerText = data.ambulances || 0;
         document.getElementById("ambulanceCount").innerText = data.ambulances || 0;
 
-        // Update Congestion UI Indicator
+        updateCharts(data.cars || 0, data.bikes || 0, data.buses || 0, data.trucks || 0, data.autos || 0);
+
         const levelElement = document.getElementById("congestionLevel");
+        const currentLevelElement = document.getElementById("currentLevel");
         const level = data.congestion_level || "LOW";
+        
         levelElement.innerText = level;
+        if (currentLevelElement) currentLevelElement.innerText = level;
         
         if (level === "HIGH") {
             levelElement.className = "fw-bold my-2 text-danger";
+            if (currentLevelElement) currentLevelElement.className = "fw-bold text-danger";
         } else if (level === "MEDIUM") {
             levelElement.className = "fw-bold my-2 text-warning";
+            if (currentLevelElement) currentLevelElement.className = "fw-bold text-warning";
         } else {
             levelElement.className = "fw-bold my-2 text-success";
+            if (currentLevelElement) currentLevelElement.className = "fw-bold text-success";
         }
 
     } catch (error) {
-        console.warn("Backend dynamic fetch failed, using fallback or default mock dashboard data.", error);
+        console.warn("Backend dynamic fetch warning:", error);
     }
 }
 

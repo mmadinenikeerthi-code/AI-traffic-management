@@ -1,9 +1,9 @@
-# app/schemas.py
-
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 
+
+# --- USER SCHEMAS ---
 
 class UserRegister(BaseModel):
     fullname: str = Field(..., min_length=3, max_length=100)
@@ -50,6 +50,8 @@ class Token(BaseModel):
     token_type: str
 
 
+# --- VIDEO & DETECTION SCHEMAS ---
+
 class VideoUploadResponse(BaseModel):
     id: int
     filename: str
@@ -58,6 +60,22 @@ class VideoUploadResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class DetectionResult(BaseModel):
+    vehicle_name: str
+    confidence: float
+    xmin: int
+    ymin: int
+    xmax: int
+    ymax: int
+
+
+class DetectionResponse(BaseModel):
+    filename: str
+    processing_time: float
+    total_objects: int
+    detections: List[DetectionResult]
 
 
 class VehicleCountResponse(BaseModel):
@@ -75,6 +93,8 @@ class VehicleCountResponse(BaseModel):
         from_attributes = True
 
 
+# --- CONGESTION & AI SCHEMAS ---
+
 class CongestionResponse(BaseModel):
     vehicle_count: int
     density: float
@@ -87,6 +107,64 @@ class CongestionResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+class AIConfiguration(BaseModel):
+    confidence_threshold: float = 0.50
+    iou_threshold: float = 0.45
+    save_video: bool = True
+    save_report: bool = True
+
+
+# --- ALERT & ACCIDENT SCHEMAS ---
+
+class AlertCreate(BaseModel):
+    location: str = "Junction A"
+    alert_type: str
+    severity: str
+    message: str
+
+
+class AccidentCreate(BaseModel):
+    location: str = "Junction B"
+    severity: str = "High"
+    message: Optional[str] = "Accident reported via system endpoint"
+
+
+class AlertResponse(BaseModel):
+    id: int
+    location: str
+    alert_type: str
+    severity: str
+    message: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# --- TRAFFIC HISTORY SCHEMAS ---
+
+class TrafficHistoryCreate(BaseModel):
+    location: str = "Junction A"
+    vehicle_count: int
+    density: str
+    signal_time: int
+
+
+class TrafficHistoryResponse(BaseModel):
+    id: int
+    location: str
+    vehicle_count: int
+    density: str
+    signal_time: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# --- REPORT & DASHBOARD SCHEMAS ---
 
 class ReportResponse(BaseModel):
     id: int
@@ -107,17 +185,6 @@ class ReportResponse(BaseModel):
         from_attributes = True
 
 
-class AlertResponse(BaseModel):
-    id: int
-    title: str
-    description: str
-    severity: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 class DashboardResponse(BaseModel):
     total_users: int
     total_uploaded_videos: int
@@ -129,22 +196,6 @@ class DashboardResponse(BaseModel):
     density: float
     average_speed: float
     signal_time: int
-
-
-class DetectionResult(BaseModel):
-    vehicle_name: str
-    confidence: float
-    xmin: int
-    ymin: int
-    xmax: int
-    ymax: int
-
-
-class DetectionResponse(BaseModel):
-    filename: str
-    processing_time: float
-    total_objects: int
-    detections: List[DetectionResult]
 
 
 class LogResponse(BaseModel):
@@ -167,10 +218,3 @@ class UpdateProfile(BaseModel):
     fullname: str
     email: EmailStr
     phone: Optional[str]
-
-
-class AIConfiguration(BaseModel):
-    confidence_threshold: float = 0.50
-    iou_threshold: float = 0.45
-    save_video: bool = True
-    save_report: bool = True

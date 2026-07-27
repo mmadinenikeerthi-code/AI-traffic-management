@@ -1,26 +1,30 @@
+# ==========================================================
 # app/routers/reports.py
+# Traffic Report Management, Analytics Dashboard & Exports (PDF/CSV)
+# ==========================================================
 
 import csv
-import os
+import io
 from datetime import datetime
-from pathlib import Path
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+import pandas as pd
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import auth, config, models, utils, schemas
+from app import auth, config, models, schemas, utils
 from app.database import get_db
 
-router = APIRouter()
+router = APIRouter(prefix="/reports", tags=["Reports & Exports"])
 
-# Use the centralized reports directory from your config
+# Ensure centralized reports directory exists
 REPORT_FOLDER = config.REPORT_FOLDER
 REPORT_FOLDER.mkdir(exist_ok=True, parents=True)
+
 
 # ==========================================================
 # REPORT DASHBOARD
@@ -30,6 +34,7 @@ def report_dashboard(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.officer_required)
 ):
+    """Summary overview of generated reports and system detection records."""
     total_reports = db.query(models.TrafficReport).count()
     total_videos = db.query(models.UploadedVideo).count()
     processed = db.query(models.UploadedVideo).filter(
@@ -55,6 +60,7 @@ def generate_report(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.officer_required)
 ):
+    """Generates a snapshot report based on the latest vehicle count and congestion state."""
     latest = db.query(
         models.VehicleCount
     ).order_by(
@@ -73,7 +79,6 @@ def generate_report(
             detail="Vehicle data not found."
         )
 
-    # Generate a unique timestamped report name
     report_name = utils.generate_report_name()
 
     report = models.TrafficReport(
@@ -107,6 +112,7 @@ def all_reports(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.officer_required)
 ):
+    """Retrieve all generated traffic reports ordered by creation date."""
     reports = db.query(
         models.TrafficReport
     ).order_by(
@@ -124,6 +130,7 @@ def report_details(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.officer_required)
 ):
+    """Fetch details for a specific report ID."""
     report = db.query(
         models.TrafficReport
     ).filter(
@@ -147,6 +154,7 @@ def generate_pdf(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.officer_required)
 ):
+    """Renders a PDF document for a specific report ID and triggers file download."""
     report = db.query(models.TrafficReport).filter(
         models.TrafficReport.id == report_id
     ).first()
@@ -187,13 +195,14 @@ def generate_pdf(
 
 
 # ==========================================================
-# EXPORT CSV
+# EXPORT REPORTS TO CSV (FILE RESPONSE)
 # ==========================================================
 @router.get("/csv/all")
-def export_csv(
+def export_csv_file(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.officer_required)
 ):
+    """Exports all TrafficReport records to a downloadable CSV file saved on server."""
     reports = db.query(models.TrafficReport).all()
     if not reports:
         raise HTTPException(
@@ -205,13 +214,11 @@ def export_csv(
     
     with open(csv_path, mode="w", newline="", encoding="utf-8") as csv_file:
         writer = csv.writer(csv_file)
-        # Write Headers
         writer.writerow([
             "ID", "Report Name", "Total Vehicles", "Cars", "Bikes", 
             "Buses", "Trucks", "Auto Rickshaws", "Ambulances", 
             "Congestion Level", "Recommendation", "Generated At"
         ])
-        # Write Data rows
         for r in reports:
             writer.writerow([
                 r.id, r.report_name, r.total_vehicles, r.cars, r.bikes,
@@ -223,4 +230,41 @@ def export_csv(
         str(csv_path),
         filename="all_traffic_reports.csv",
         media_type="text/csv"
+    )
+
+
+# ==========================================================
+# EXPORT TRAFFIC LOGS TO CSV (DIRECT IN-MEMORY STREAM)
+# ==========================================================
+@router.get("/export/logs")
+def export_traffic_logs_csv(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.officer_required)
+):
+    """Generates an in-memory CSV export of real-time TrafficLog entries."""
+    logs = db.query(models.TrafficLog).all()
+    if not logs:
+        raise HTTPException(
+            status_code=404,
+            detail="No traffic log records found."
+        )
+
+    data = [
+        {
+            "ID": l.id,
+            "Location": l.location,
+            "Vehicles": l.vehicle_count,
+            "Density": l.density_status,
+            "Accident": l.has_accident,
+            "Time": l.timestamp
+        }
+        for l in logs
+    ]
+    df = pd.DataFrame(data)
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=traffic_logs_report.csv"}
     )

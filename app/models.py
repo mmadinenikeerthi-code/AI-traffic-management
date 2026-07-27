@@ -1,5 +1,4 @@
-# app/models.py
-
+from datetime import datetime
 from sqlalchemy import (
     Column,
     Integer,
@@ -11,9 +10,10 @@ from sqlalchemy import (
     Text
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from app.database import Base
 
+
+# --- USER & AUTH MODELS ---
 
 class User(Base):
     __tablename__ = "users"
@@ -31,6 +31,8 @@ class User(Base):
     reports = relationship("TrafficReport", back_populates="user")
     videos = relationship("UploadedVideo", back_populates="user")
 
+
+# --- VIDEO & DETECTION MODELS ---
 
 class UploadedVideo(Base):
     __tablename__ = "uploaded_videos"
@@ -60,6 +62,8 @@ class VehicleCount(Base):
     detected_time = Column(DateTime, default=datetime.utcnow)
 
 
+# --- CONGESTION & TRAFFIC MODELS ---
+
 class Congestion(Base):
     __tablename__ = "congestion"
 
@@ -72,6 +76,33 @@ class Congestion(Base):
     recommendation = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
+class TrafficHistory(Base):
+    __tablename__ = "traffic_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    location = Column(String, nullable=False, default="Junction A")
+    vehicle_count = Column(Integer, default=0)
+    density = Column(String, default="Low")       # "Low", "Medium", "High"
+    signal_time = Column(Integer, default=30)     # Allocated green signal time in seconds
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TrafficLog(Base):
+    __tablename__ = "traffic_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    location = Column(String(255), nullable=False)
+    lat = Column(Float, nullable=False)
+    lng = Column(Float, nullable=False)
+    vehicle_count = Column(Integer, nullable=False)
+    density_status = Column(String(50), nullable=False)  # Low, Medium, High
+    avg_speed_kmh = Column(Float, default=40.0)
+    has_accident = Column(Boolean, default=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+# --- REPORT & ALERTS MODELS ---
 
 class TrafficReport(Base):
     __tablename__ = "traffic_reports"
@@ -98,9 +129,13 @@ class Alert(Base):
     __tablename__ = "alerts"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(200))
-    description = Column(Text)
-    severity = Column(String(30))
+    title = Column(String(200), nullable=True)
+    description = Column(Text, nullable=True)
+    location = Column(String(255), nullable=True, default="Junction A")
+    alert_type = Column(String(100), nullable=True)  # e.g., Heavy Traffic, Accident, Road Block
+    severity = Column(String(30), default="High")
+    message = Column(Text, nullable=True)
+    status = Column(String(20), default="Active")    # "Active", "Resolved"
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
