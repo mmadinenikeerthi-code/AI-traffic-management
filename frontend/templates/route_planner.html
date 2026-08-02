@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Route Planner - Traffic GIS{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet Routing Machine CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+<style>
+    #map { height: 100vh; width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex h-100">
+    <!-- Left Navigation Input Panel -->
+    <div class="bg-body-tertiary border-end border-secondary-subtle p-4" style="width: 380px;">
+        <h5 class="fw-bold mb-1">Route Planner</h5>
+        <p class="text-secondary small mb-4">Powered by OSRM & OpenStreetMap</p>
+
+        <form id="route-form">
+            <div class="mb-3">
+                <label class="form-label text-secondary small">Origin</label>
+                <input type="text" id="origin" class="form-bg-dark form-control" value="Silk Board, Bengaluru">
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-secondary small">Destination</label>
+                <input type="text" id="destination" class="form-control" value="Majestic, Bengaluru">
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label text-secondary small">Travel Mode</label>
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="mode" id="mode-car" checked>
+                    <label class="btn btn-outline-primary btn-sm" for="mode-car"><i class="fa-solid fa-car me-1"></i> Car</label>
+
+                    <input type="radio" class="btn-check" name="mode" id="mode-bike">
+                    <label class="btn btn-outline-primary btn-sm" for="mode-bike"><i class="fa-solid fa-motorcycle me-1"></i> Bike</label>
+
+                    <input type="radio" class="btn-check" name="mode" id="mode-truck">
+                    <label class="btn btn-outline-primary btn-sm" for="mode-truck"><i class="fa-solid fa-truck me-1"></i> Truck</label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 fw-medium">Calculate Route</button>
+        </form>
+
+        <!-- Route Output Summary Card -->
+        <div id="route-summary" class="mt-4 p-3 bg-dark rounded border border-secondary" style="display: none;">
+            <div class="d-flex justify-content-between mb-2 pb-2 border-bottom border-secondary">
+                <span class="small text-secondary">Route Summary</span>
+                <span class="badge bg-success">Optimal</span>
+            </div>
+            <div class="row text-center mb-2">
+                <div class="col">
+                    <div class="text-secondary extra-small">DISTANCE</div>
+                    <div class="fw-bold fs-5 text-light" id="dist-val">13.6 km</div>
+                </div>
+                <div class="col">
+                    <div class="text-secondary extra-small">EST. TIME</div>
+                    <div class="fw-bold fs-5 text-light" id="time-val">29 mins</div>
+                </div>
+            </div>
+            <div class="small text-warning">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> Traffic Delay: +6 mins
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Canvas Panel -->
+    <div class="flex-grow-1">
+        <div id="map"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+<script>
+    // Initialize Leaflet Map over Bengaluru coordinates
+    const map = L.map('map').setView([12.9716, 77.5946], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Form submit handler to trigger OSRM Routing
+    document.getElementById('route-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Example coordinates: Silk Board -> Majestic
+        const originCoords = L.latLng(12.9172, 77.6228);
+        const destCoords = L.latLng(12.9767, 77.5713);
+
+        L.Routing.control({
+            waypoints: [originCoords, destCoords],
+            router: L.Routing.osrmv1({
+                serviceUrl: `https://router.project-osrm.org/route/v1`
+            }),
+            lineOptions: { styles: [{ color: '#0d6efd', weight: 6 }] },
+            show: false
+        }).addTo(map);
+
+        document.getElementById('route-summary').style.display = 'block';
+    });
+</script>
+{% endblock %}

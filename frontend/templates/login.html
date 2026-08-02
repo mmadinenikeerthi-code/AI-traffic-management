@@ -1,109 +1,105 @@
-{% extends "base.html" %}
+{% extends "base_public.html" %}
 
-{% block title %}
-Login | AI Traffic Management System
-{% endblock %}
+{% block title %}Login | AI Traffic Management System{% endblock %}
 
 {% block content %}
-
-<div class="container mt-5">
+<div class="container">
     <div class="row justify-content-center">
         <div class="col-md-5">
-            <div class="card shadow-lg">
-                <div class="card-body">
-                    <div class="text-center mb-4">
-                        <i class="fas fa-traffic-light fa-4x text-primary"></i>
-                        <h2 class="mt-3">
-                            AI Traffic Management System
-                        </h2>
-                        <p class="text-muted">
-                            Login to continue
-                        </p>
+            <div class="card bg-body-tertiary border-secondary-subtle shadow-lg p-4 rounded-4">
+                <div class="text-center mb-4">
+                    <i class="fa-solid fa-traffic-light text-primary display-4 mb-2"></i>
+                    <h4 class="fw-bold">AI Traffic Control</h4>
+                    <p class="text-secondary small">Login to access System GIS</p>
+                </div>
+
+                <form id="loginForm">
+                    <!-- Username Input -->
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary">Username or Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary text-secondary">
+                                <i class="fa-solid fa-user"></i>
+                            </span>
+                            <input 
+                                type="text" 
+                                id="username" 
+                                class="form-control" 
+                                placeholder="Enter Username" 
+                                required>
+                        </div>
                     </div>
 
-                    <form id="loginForm">
-                        <div class="mb-3">
-                            <label class="form-label">Username</label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-user"></i>
-                                </span>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="username"
-                                    placeholder="Enter Username"
-                                    required>
-                            </div>
+                    <!-- Password Input + Toggle Eye Button -->
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary text-secondary">
+                                <i class="fa-solid fa-lock"></i>
+                            </span>
+                            <input 
+                                type="password" 
+                                id="password" 
+                                class="form-control" 
+                                placeholder="Enter Password" 
+                                required>
+                            <button 
+                                type="button" 
+                                class="btn btn-outline-secondary" 
+                                id="togglePassword">
+                                <i class="fa-solid fa-eye" id="toggleIcon"></i>
+                            </button>
                         </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Password</label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-lock"></i>
-                                </span>
-                                <input
-                                    type="password"
-                                    class="form-control"
-                                    id="password"
-                                    placeholder="Enter Password"
-                                    required>
-                                <button
-                                    type="button"
-                                    class="btn btn-outline-secondary"
-                                    id="togglePassword">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                id="remember">
-                            <label class="form-check-label" for="remember">
-                                Remember Me
-                            </label>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-sign-in-alt"></i> Login
-                        </button>
-                    </form>
-
-                    <div id="loginMessage" class="mt-3"></div>
-
-                    <hr>
-
-                    <div class="text-center">
-                        Don't have an account?
-                        <a href="/register">Register</a>
                     </div>
+
+                    <!-- Remember Me Checkbox -->
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="remember">
+                        <label class="form-check-label small text-secondary" for="remember">
+                            Remember Me
+                        </label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-medium">
+                        <i class="fa-solid fa-right-to-bracket me-2"></i> Login to Dashboard
+                    </button>
+                </form>
+
+                <!-- Feedback Message Container -->
+                <div id="loginMessage" class="mt-3"></div>
+
+                <hr class="border-secondary my-4">
+
+                <!-- Registration Redirect -->
+                <div class="text-center">
+                    <span class="small text-secondary">Don't have an account?</span>
+                    <a href="/register" class="small text-primary text-decoration-none fw-semibold ms-1">Register here</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
 {% endblock %}
 
-{% block javascript %}
+{% block extra_js %}
 <script>
+    // Password visibility toggle
     const togglePassword = document.getElementById("togglePassword");
     const passwordInput = document.getElementById("password");
+    const toggleIcon = document.getElementById("toggleIcon");
 
     togglePassword.addEventListener("click", function () {
         if (passwordInput.type === "password") {
             passwordInput.type = "text";
-            togglePassword.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            toggleIcon.className = "fa-solid fa-eye-slash";
         } else {
             passwordInput.type = "password";
-            togglePassword.innerHTML = '<i class="fas fa-eye"></i>';
+            toggleIcon.className = "fa-solid fa-eye";
         }
     });
 
+    // Login Form Submit Handler
     document.getElementById("loginForm").addEventListener("submit", async function (e) {
         e.preventDefault();
 
@@ -111,7 +107,7 @@ Login | AI Traffic Management System
         const password = document.getElementById("password").value;
         const message = document.getElementById("loginMessage");
 
-        message.innerHTML = "";
+        message.innerHTML = '<div class="alert alert-info py-2 small">Authenticating...</div>';
 
         const formData = new URLSearchParams();
         formData.append("username", username);
@@ -129,25 +125,26 @@ Login | AI Traffic Management System
             const data = await response.json();
 
             if (response.ok) {
-                // Store token with BOTH keys for compatibility
+                // Store tokens in both localStorage and cookies for compatibility
                 localStorage.setItem("access_token", data.access_token);
                 localStorage.setItem("token", data.access_token);
                 localStorage.setItem("username", username);
+                document.cookie = `access_token=${data.access_token}; path=/;`;
                 
                 if (data.user) {
                     localStorage.setItem("user", JSON.stringify(data.user));
                 }
 
-                message.innerHTML = '<div class="alert alert-success">Login Successful</div>';
+                message.innerHTML = '<div class="alert alert-success py-2 small">Login Successful! Redirecting...</div>';
 
                 setTimeout(function () {
-                    window.location.href = "/dashboard-page";
+                    window.location.href = "/dashboard";
                 }, 800);
             } else {
-                message.innerHTML = `<div class="alert alert-danger">${data.detail || "Login failed"}</div>`;
+                message.innerHTML = `<div class="alert alert-danger py-2 small">${data.detail || "Login failed"}</div>`;
             }
         } catch (error) {
-            message.innerHTML = '<div class="alert alert-danger">Unable to connect to server.</div>';
+            message.innerHTML = '<div class="alert alert-danger py-2 small">Unable to connect to server.</div>';
             console.error("Login error:", error);
         }
     });

@@ -1,16 +1,16 @@
 # app/auth.py
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
+from app import config, models
 from app.database import get_db
-from app import models, config
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],
@@ -22,25 +22,28 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
-def hash_password(password: str):
+def hash_password(password: str) -> str:
+    """Hashes a plain text password using bcrypt."""
     return pwd_context.hash(password)
 
 
-def verify_password(plain_password: str, hashed_password: str):
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verifies a plain text password against a hashed password context."""
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def create_access_token(
     data: dict,
     expires_delta: Optional[timedelta] = None
-):
+) -> str:
+    """Generates a signed JWT access token with an expiration timestamp."""
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
-            minutes=config.ACCESS_TOKEN_EXPIRE_MINUTES
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 1440)
         )
 
     to_encode.update({"exp": expire})
@@ -54,7 +57,8 @@ def create_access_token(
     return encoded_jwt
 
 
-def authenticate_user(username: str, password: str, db: Session):
+def authenticate_user(username: str, password: str, db: Session) -> Optional[models.User]:
+    """Authenticates user credentials against database record and active status."""
     user = db.query(models.User).filter(
         models.User.username == username
     ).first()
@@ -65,10 +69,11 @@ def authenticate_user(username: str, password: str, db: Session):
     if not verify_password(password, user.password):
         return None
 
-    if user.status != "Active":
+    user_status = getattr(user, "status", "Active")
+    if user_status != "Active":
         raise HTTPException(
-            status_code=403,
-            detail="Account Disabled"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is disabled or inactive."
         )
 
     return user
@@ -77,10 +82,11 @@ def authenticate_user(username: str, password: str, db: Session):
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
-):
+) -> models.User:
+    """Extracts and verifies JWT bearer token to inject current User object."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid Token",
+        detail="Could not validate credentials or token has expired.",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -90,7 +96,7 @@ def get_current_user(
             config.SECRET_KEY,
             algorithms=[config.ALGORITHM]
         )
-        username = payload.get("sub")
+        username: str = payload.get("sub")
 
         if username is None:
             raise credentials_exception
@@ -108,40 +114,45 @@ def get_current_user(
     return user
 
 
+# ==========================================================
+# ROLE-BASED ACCESS CONTROL (RBAC) DEPENDENCIES
+# ==========================================================
+
 def admin_required(
     current_user: models.User = Depends(get_current_user)
-):
+) -> models.User:
     if current_user.role != "Admin":
         raise HTTPException(
-            status_code=403,
-            detail="Admin Access Required"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required."
         )
     return current_user
 
 
 def supervisor_required(
     current_user: models.User = Depends(get_current_user)
-):
+) -> models.User:
     if current_user.role not in ["Admin", "Supervisor"]:
         raise HTTPException(
-            status_code=403,
-            detail="Supervisor Access Required"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Supervisor access required."
         )
     return current_user
 
 
 def officer_required(
     current_user: models.User = Depends(get_current_user)
-):
+) -> models.User:
     if current_user.role not in ["Admin", "Supervisor", "Traffic Officer"]:
         raise HTTPException(
-            status_code=403,
-            detail="Traffic Officer Access Required"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Traffic Officer access required."
         )
     return current_user
 
 
-def login_response(user):
+def login_response(user: models.User) -> dict:
+    """Helper formatting standardized login token payload."""
     token = create_access_token(
         data={
             "sub": user.username,

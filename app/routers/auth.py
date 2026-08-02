@@ -1,27 +1,20 @@
-# ==========================================================
 # app/routers/auth.py
-# Part 1
-# User Registration
-# ==========================================================
 
 from datetime import timedelta
+from typing import List, Optional
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    status
-)
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app import models, schemas, auth, config
+from app import auth, config, models, schemas
 from app.database import get_db
 
 router = APIRouter()
 
+
 # ==========================================================
-# REGISTER USER
+# USER REGISTRATION
 # ==========================================================
 
 @router.post(
@@ -34,125 +27,114 @@ def register_user(
     db: Session = Depends(get_db)
 ):
     # -----------------------------------
-    # Password Match
+    # Password Match Validation
     # -----------------------------------
     if user.password != user.confirm_password:
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Passwords do not match."
         )
 
     # -----------------------------------
-    # Username Exists
+    # Check Duplicate Username
     # -----------------------------------
-    username = db.query(models.User).filter(
+    existing_username = db.query(models.User).filter(
         models.User.username == user.username
     ).first()
 
-    if username:
+    if existing_username:
         raise HTTPException(
-            status_code=409,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Username already exists."
         )
 
     # -----------------------------------
-    # Email Exists
+    # Check Duplicate Email
     # -----------------------------------
-    email = db.query(models.User).filter(
+    existing_email = db.query(models.User).filter(
         models.User.email == user.email
     ).first()
 
-    if email:
+    if existing_email:
         raise HTTPException(
-            status_code=409,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered."
         )
 
     # -----------------------------------
-    # Phone Exists
+    # Check Duplicate Phone
     # -----------------------------------
     if user.phone:
-        phone = db.query(models.User).filter(
+        existing_phone = db.query(models.User).filter(
             models.User.phone == user.phone
         ).first()
 
-        if phone:
+        if existing_phone:
             raise HTTPException(
-                status_code=409,
-                detail="Phone number already exists."
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Phone number already registered."
             )
 
     # -----------------------------------
-    # Allowed Roles
+    # Allowed Role Validation
     # -----------------------------------
-    allowed_roles = [
-        "Admin",
-        "Supervisor",
-        "Traffic Officer"
-    ]
-
+    allowed_roles = ["Admin", "Supervisor", "Traffic Officer"]
     if user.role not in allowed_roles:
         raise HTTPException(
-            status_code=400,
-            detail="Invalid Role."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid Role selected."
         )
 
     # -----------------------------------
-    # Create User
+    # Hash Password & Persist Record
     # -----------------------------------
+    hashed_pwd = auth.hash_password(user.password)
+
     new_user = models.User(
         fullname=user.fullname,
         username=user.username,
         email=user.email,
         phone=user.phone,
         role=user.role,
-        password=auth.hash_password(user.password)
+        password=hashed_pwd,
+        status="Active"
     )
 
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error during registration: {str(e)}"
+        )
 
 
 # ==========================================================
-# CHECK USERNAME
+# AVAILABILITY VERIFICATION ENDPOINTS
 # ==========================================================
 
 @router.get("/check-username/{username}")
-def check_username(
-    username: str,
-    db: Session = Depends(get_db)
-):
+def check_username(username: str, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(
         models.User.username == username
     ).first()
+    return {"available": user is None}
 
-    if user:
-        return {"available": False}
-    return {"available": True}
-
-
-# ==========================================================
-# CHECK EMAIL
-# ==========================================================
 
 @router.get("/check-email/{email}")
-def check_email(
-    email: str,
-    db: Session = Depends(get_db)
-):
+def check_email(email: str, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(
         models.User.email == email
     ).first()
-
-    if user:
-        return {"available": False}
-    return {"available": True}
+    return {"available": user is None}
 
 
 # ==========================================================
-# LOGIN
+# LOGIN & TOKEN AUTHENTICATION
 # ==========================================================
 
 @router.post("/login")
@@ -169,7 +151,8 @@ def login(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password."
+            detail="Invalid username or password.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     access_token = auth.create_access_token(
@@ -178,7 +161,7 @@ def login(
             "role": user.role
         },
         expires_delta=timedelta(
-            minutes=config.ACCESS_TOKEN_EXPIRE_MINUTES
+            minutes=getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 1440)
         )
     )
 
@@ -198,17 +181,6 @@ def login(
 
 
 # ==========================================================
-# CURRENT USER
-# ==========================================================
-
-@router.get("/me", response_model=schemas.UserResponse)
-def get_logged_user(
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    return current_user
-
-
-# ==========================================================
 # LOGOUT
 # ==========================================================
 
@@ -220,8 +192,15 @@ def logout():
 
 
 # ==========================================================
-# VERIFY TOKEN
+# TOKEN VERIFICATION & CURRENT USER PROFILE
 # ==========================================================
+
+@router.get("/me", response_model=schemas.UserResponse)
+def get_logged_user(
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return current_user
+
 
 @router.get("/verify-token")
 def verify_token(
@@ -234,10 +213,6 @@ def verify_token(
         "status": current_user.status
     }
 
-
-# ==========================================================
-# GET USER PROFILE
-# ==========================================================
 
 @router.get("/profile", response_model=schemas.UserResponse)
 def get_profile(
@@ -256,7 +231,7 @@ def update_profile(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Check duplicate email
+    # Verify Email Uniqueness
     email_exists = db.query(models.User).filter(
         models.User.email == profile.email,
         models.User.id != current_user.id
@@ -264,11 +239,11 @@ def update_profile(
 
     if email_exists:
         raise HTTPException(
-            status_code=409,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Email already exists."
         )
 
-    # Check duplicate phone
+    # Verify Phone Uniqueness
     if profile.phone:
         phone_exists = db.query(models.User).filter(
             models.User.phone == profile.phone,
@@ -277,7 +252,7 @@ def update_profile(
 
         if phone_exists:
             raise HTTPException(
-                status_code=409,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Phone number already exists."
             )
 
@@ -300,30 +275,27 @@ def change_password(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Verify old password
     if not auth.verify_password(
         password_data.old_password,
         current_user.password
     ):
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Old password is incorrect."
         )
 
-    # Check new passwords
     if password_data.new_password != password_data.confirm_password:
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="New passwords do not match."
         )
 
-    # Prevent same password
     if auth.verify_password(
         password_data.new_password,
         current_user.password
     ):
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="New password cannot be the same as the old password."
         )
 
@@ -335,7 +307,7 @@ def change_password(
 
 
 # ==========================================================
-# DEACTIVATE ACCOUNT
+# ACCOUNT ACTIVATION / DEACTIVATION
 # ==========================================================
 
 @router.put("/deactivate")
@@ -348,10 +320,6 @@ def deactivate_account(
     return {"message": "Account has been deactivated."}
 
 
-# ==========================================================
-# ACTIVATE ACCOUNT
-# ==========================================================
-
 @router.put("/activate")
 def activate_account(
     db: Session = Depends(get_db),
@@ -361,10 +329,6 @@ def activate_account(
     db.commit()
     return {"message": "Account has been activated."}
 
-
-# ==========================================================
-# USER DASHBOARD DETAILS
-# ==========================================================
 
 @router.get("/dashboard-info")
 def dashboard_info(
@@ -380,23 +344,18 @@ def dashboard_info(
 
 
 # ==========================================================
-# ADMIN - GET ALL USERS
+# ADMIN - USER MANAGEMENT ENDPOINTS
 # ==========================================================
 
-@router.get("/admin/users")
+@router.get("/admin/users", response_model=List[schemas.UserResponse])
 def get_all_users(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.admin_required)
 ):
-    users = db.query(models.User).all()
-    return users
+    return db.query(models.User).all()
 
 
-# ==========================================================
-# ADMIN - GET USER BY ID
-# ==========================================================
-
-@router.get("/admin/user/{user_id}")
+@router.get("/admin/user/{user_id}", response_model=schemas.UserResponse)
 def get_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -408,15 +367,11 @@ def get_user(
 
     if not user:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
         )
     return user
 
-
-# ==========================================================
-# ADMIN - DELETE USER
-# ==========================================================
 
 @router.delete("/admin/delete/{user_id}")
 def delete_user(
@@ -430,18 +385,20 @@ def delete_user(
 
     if not user:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
+        )
+
+    if user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot delete your own administrative account."
         )
 
     db.delete(user)
     db.commit()
     return {"message": "User deleted successfully."}
 
-
-# ==========================================================
-# ADMIN - UPDATE ROLE
-# ==========================================================
 
 @router.put("/admin/role/{user_id}")
 def update_role(
@@ -450,15 +407,11 @@ def update_role(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.admin_required)
 ):
-    allowed_roles = [
-        "Admin",
-        "Supervisor",
-        "Traffic Officer"
-    ]
+    allowed_roles = ["Admin", "Supervisor", "Traffic Officer"]
 
     if role not in allowed_roles:
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid role."
         )
 
@@ -468,7 +421,7 @@ def update_role(
 
     if not user:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
         )
 
@@ -476,10 +429,6 @@ def update_role(
     db.commit()
     return {"message": "Role updated successfully."}
 
-
-# ==========================================================
-# ADMIN - ACTIVATE USER
-# ==========================================================
 
 @router.put("/admin/activate/{user_id}")
 def activate_user(
@@ -493,7 +442,7 @@ def activate_user(
 
     if not user:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
         )
 
@@ -501,10 +450,6 @@ def activate_user(
     db.commit()
     return {"message": "User activated successfully."}
 
-
-# ==========================================================
-# ADMIN - DEACTIVATE USER
-# ==========================================================
 
 @router.put("/admin/deactivate/{user_id}")
 def deactivate_user(
@@ -518,7 +463,7 @@ def deactivate_user(
 
     if not user:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
         )
 
@@ -527,36 +472,17 @@ def deactivate_user(
     return {"message": "User deactivated successfully."}
 
 
-# ==========================================================
-# ADMIN DASHBOARD
-# ==========================================================
-
 @router.get("/admin/dashboard")
 def admin_dashboard(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.admin_required)
 ):
     total_users = db.query(models.User).count()
-
-    active_users = db.query(models.User).filter(
-        models.User.status == "Active"
-    ).count()
-
-    inactive_users = db.query(models.User).filter(
-        models.User.status == "Inactive"
-    ).count()
-
-    admins = db.query(models.User).filter(
-        models.User.role == "Admin"
-    ).count()
-
-    supervisors = db.query(models.User).filter(
-        models.User.role == "Supervisor"
-    ).count()
-
-    officers = db.query(models.User).filter(
-        models.User.role == "Traffic Officer"
-    ).count()
+    active_users = db.query(models.User).filter(models.User.status == "Active").count()
+    inactive_users = db.query(models.User).filter(models.User.status == "Inactive").count()
+    admins = db.query(models.User).filter(models.User.role == "Admin").count()
+    supervisors = db.query(models.User).filter(models.User.role == "Supervisor").count()
+    officers = db.query(models.User).filter(models.User.role == "Traffic Officer").count()
 
     return {
         "total_users": total_users,
@@ -568,11 +494,7 @@ def admin_dashboard(
     }
 
 
-# ==========================================================
-# SEARCH USER
-# ==========================================================
-
-@router.get("/admin/search/{username}")
+@router.get("/admin/search/{username}", response_model=List[schemas.UserResponse])
 def search_user(
     username: str,
     db: Session = Depends(get_db),

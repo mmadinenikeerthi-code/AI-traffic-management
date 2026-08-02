@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics & Trend Analysis | AI Traffic System{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div id="notification-banner" class="alert alert-warning d-none mb-3"></div>
+
+    <h2 class="mb-4">📈 Traffic Analytics & AI Recommendations</h2>
+
+    <!-- Step 1: KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card bg-primary text-white p-3 shadow-sm">
+                <h6>Total Vehicles</h6>
+                <h3 id="totalVehicles">--</h3>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-danger text-white p-3 shadow-sm">
+                <h6>Congestion</h6>
+                <h3 id="congestionLevel">--</h3>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-warning text-dark p-3 shadow-sm">
+                <h6>Alerts Today</h6>
+                <h3 id="alertsToday">--</h3>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-success text-white p-3 shadow-sm">
+                <h6>Avg Speed</h6>
+                <h3 id="avgSpeed">-- km/h</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-dark text-white p-3 shadow-sm">
+                <h6>Peak Traffic Hours</h6>
+                <h4 id="peakHour" class="text-warning">--</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 4 & Step 1: Trend Charts and Vehicle Distribution -->
+    <div class="row mb-4">
+        <div class="col-lg-7">
+            <div class="card p-3 shadow-sm">
+                <h5>📊 Hourly Vehicle Volume & Congestion Trend</h5>
+                <div style="height: 300px;"><canvas id="trendAnalysisChart"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card p-3 shadow-sm">
+                <h5>🚗 Vehicle Type Distribution</h5>
+                <div style="height: 300px;"><canvas id="vehicleTypeChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: AI Route Recommendation Widget -->
+    <div class="card p-3 shadow-sm">
+        <h5>🤖 AI Route Recommendation Engine</h5>
+        <div class="row mt-2">
+            <div class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="text" id="road-input" class="form-control" value="MG Road">
+                    <input type="number" id="density-input" class="form-control" value="85" placeholder="Density %">
+                    <button class="btn btn-primary" onclick="submitAIRecommendation()">Run AI Analysis</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div id="ai-recommendation-output" class="p-3 border rounded bg-light d-none"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/notification.js"></script>
+<script src="/static/js/analytics.js"></script>
+{% endblock %}

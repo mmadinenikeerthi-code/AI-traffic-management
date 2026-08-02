@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}
+Pan-India Traffic Heatmap & Routing GIS | AI Traffic System
+{% endblock %}
+
+{% block head %}
+<!-- Font Awesome Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<!-- Leaflet CSS for GIS Mapping -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<!-- Leaflet Routing Machine CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+
+<style>
+    #map {
+        height: 700px;
+        width: 100%;
+        border-radius: 8px;
+        z-index: 1; /* Prevents overlap with fixed dropdowns */
+    }
+    .gis-stat-card {
+        background: #f8f9fa;
+        border-left: 4px solid #0d6efd;
+    }
+    .routing-panel {
+        background: #ffffff;
+        border-radius: 8px;
+    }
+    .hover-shadow:hover {
+        background-color: #e9ecef;
+        transition: background-color 0.2s ease-in-out;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+
+    <!-- Top Navigation & Pan-India Search Bar -->
+    <div class="row align-items-center mb-4">
+        <div class="col-md-4">
+            <a href="/dashboard-page" class="btn btn-outline-primary mb-2">
+                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+            </a>
+            <h2 class="fw-bold mb-0">
+                <i class="fas fa-map-marked-alt text-danger me-2"></i>Traffic Heatmap GIS
+            </h2>
+            <p class="text-muted mb-0">Pan-India Real-time Congestion & Routing</p>
+        </div>
+        
+        <!-- Nationwide Search Feature -->
+        <div class="col-md-5">
+            <div class="input-group shadow-sm">
+                <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" id="panIndiaSearch" class="form-control border-start-0" placeholder="Search State, City, or Junction (e.g., 'Hyderabad', 'MH', 'Kurnool')...">
+                <button class="btn btn-primary" onclick="triggerSearch()">Search India</button>
+            </div>
+        </div>
+
+        <div class="col-md-3 text-end">
+            <button class="btn btn-secondary shadow-sm" onclick="triggerSearch()">
+                <i class="fas fa-sync-alt me-1"></i> Refresh Data
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Grid Layout -->
+    <div class="row">
+        
+        <!-- GIS Map Display (Left Column) -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm border-0 p-3 h-100">
+                <div class="card-header bg-white border-0 fw-bold d-flex justify-content-between align-items-center px-0 pb-2">
+                    <span><i class="fas fa-globe text-primary me-2"></i>Interactive Nationwide Traffic Map</span>
+                    <small class="text-muted">Powered by Leaflet.js & OpenStreetMap</small>
+                </div>
+                
+                <!-- Leaflet Container -->
+                <div id="map" class="shadow-sm border"></div>
+                
+                <!-- Heatmap Color Legend -->
+                <div class="d-flex justify-content-end align-items-center mt-3 gap-3">
+                    <span class="small fw-semibold text-muted">Congestion Scale:</span>
+                    <span class="badge bg-light text-dark border"><span class="text-success me-1">🟢</span> Low (&lt;40%)</span>
+                    <span class="badge bg-light text-dark border"><span class="text-warning me-1">🟡</span> Moderate (40-70%)</span>
+                    <span class="badge bg-light text-dark border"><span class="text-danger me-1">🔴</span> Heavy (&gt;70%)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls & Statistics Panel (Right Column) -->
+        <div class="col-lg-4 mb-4 d-flex flex-column gap-3">
+            
+            <!-- 1. Route Planner Section -->
+            <div class="card shadow-sm border-0 p-4 routing-panel">
+                <h5 class="fw-bold border-bottom pb-2 mb-3">
+                    <i class="fas fa-route text-success me-2"></i> Pan-India Route Planner
+                </h5>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted small">Source Location</label>
+                    <select id="sourceSelect" class="form-select shadow-sm">
+                        <option value="15.8281,78.0373">Kurnool, Andhra Pradesh (AP)</option>
+                        <option value="17.4375,78.4482">Hyderabad, Telangana (TG)</option>
+                        <option value="12.9716,77.5946">Bangalore, Karnataka (KA)</option>
+                        <option value="19.0693,72.8656">Mumbai, Maharashtra (MH)</option>
+                        <option value="28.6315,77.2167">New Delhi, NCR (DL)</option>
+                        <option value="13.0604,80.2636">Chennai, Tamil Nadu (TN)</option>
+                        <option value="22.5555,88.3522">Kolkata, West Bengal (WB)</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted small">Destination Location</label>
+                    <select id="destSelect" class="form-select shadow-sm">
+                        <option value="17.4375,78.4482">Hyderabad, Telangana (TG)</option>
+                        <option value="15.8281,78.0373">Kurnool, Andhra Pradesh (AP)</option>
+                        <option value="12.9716,77.5946">Bangalore, Karnataka (KA)</option>
+                        <option value="19.0693,72.8656">Mumbai, Maharashtra (MH)</option>
+                        <option value="28.6315,77.2167">New Delhi, NCR (DL)</option>
+                        <option value="13.0604,80.2636">Chennai, Tamil Nadu (TN)</option>
+                        <option value="22.5555,88.3522">Kolkata, West Bengal (WB)</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-success w-100 mb-3 fw-bold shadow-sm" onclick="calculateRoute()">
+                    <i class="fas fa-directions me-1"></i> Calculate Fastest Route
+                </button>
+
+                <div class="bg-light p-2 rounded border">
+                    <h6 class="fw-bold mb-2 text-center"><i class="fas fa-clock text-primary me-1"></i> Trip Estimate</h6>
+                    <div class="d-flex justify-content-between px-2">
+                        <span class="text-muted">Distance:</span>
+                        <span id="routeDistance" class="fw-bold text-dark">-- km</span>
+                    </div>
+                    <div class="d-flex justify-content-between px-2">
+                        <span class="text-muted">Time:</span>
+                        <span id="routeTime" class="fw-bold text-dark">-- min</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Junction Statistics & AI Analytics Section -->
+            <div class="card shadow-sm border-0 p-3 flex-grow-1">
+                <h5 class="fw-bold border-bottom pb-2">
+                    <i class="fas fa-chart-pie text-primary me-2"></i> Junction Analytics
+                </h5>
+
+                <!-- Selected Location Display -->
+                <div class="mt-2 text-center">
+                    <label class="form-label text-muted fw-semibold mb-0 small">Currently Monitoring</label>
+                    <h5 id="selected-location-title" class="fw-bold text-primary mb-0">Select a point on the map</h5>
+                </div>
+
+                <!-- Live Metrics Card -->
+                <div class="p-3 gis-stat-card rounded my-3 shadow-sm bg-white border">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <small class="text-muted d-block fw-semibold">Traffic Status</small>
+                            <span id="selected-level" class="badge bg-secondary fs-6 px-3 py-1">--</span>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <small class="text-muted d-block fw-semibold">Vehicle Count</small>
+                            <h5 id="selected-vehicles" class="fw-bold mb-0 text-dark">--</h5>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block fw-semibold">Avg Speed</small>
+                            <h5 id="selected-speed" class="fw-bold mb-0 text-dark">--</h5>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block fw-semibold">Congestion</small>
+                            <h5 id="selected-congestion" class="fw-bold text-dark mb-0">--</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Dynamic Recommendation Output -->
+                <div class="mt-auto">
+                    <h6 class="fw-bold"><i class="fas fa-brain text-primary me-1"></i> AI Advisory Suggestion:</h6>
+                    <div id="selected-recommendation" class="alert alert-secondary border-0 shadow-sm mt-2 mb-0 small">
+                        Awaiting location selection to generate AI routing advice.
+                    </div>
+                </div>
+
+            </div>
+            
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block javascript %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet Routing Machine JS -->
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+<!-- Custom Heatmap & Routing Logic -->
+<script src="/static/js/heatmap.js"></script>
+
+<script>
+    // Tiny inline script to handle the Pan-India search button
+    function triggerSearch() {
+        const query = document.getElementById('panIndiaSearch').value;
+        // The loadHeatmapData function in heatmap.js will need to read this query, 
+        // or we update the URL to trigger the backend filter.
+        const url = new URL(window.location.href);
+        url.searchParams.set('search', query);
+        // Clear previous location focus when searching nationally
+        url.searchParams.delete('location'); 
+        window.history.pushState({}, '', url);
+        
+        // Call the global function from heatmap.js
+        if(typeof loadHeatmapData === 'function') {
+            loadHeatmapData();
+        }
+    }
+</script>
+{% endblock %}

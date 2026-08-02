@@ -11,8 +11,11 @@ share/
 runs/
 
 *.db
+*.sqlite3
 .env
 *.pt
 pyvenv.cfg
 .vscode/
 *.log
+app/uploads/
+app/outputs/

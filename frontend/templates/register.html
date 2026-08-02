@@ -1,98 +1,94 @@
-{% extends "base.html" %}
+{% extends "base_public.html" %}
 
-{% block title %}
-Register | AI Traffic Management System
-{% endblock %}
+{% block title %}Register | AI Traffic Management System{% endblock %}
 
 {% block content %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="card bg-body-tertiary border-secondary-subtle shadow-lg p-4 rounded-4">
+                <div class="text-center mb-4">
+                    <i class="fa-solid fa-user-plus text-success display-5 mb-2"></i>
+                    <h4 class="fw-bold">Create Account</h4>
+                    <p class="text-secondary small">Traffic Management System Registration</p>
+                </div>
 
-<div class="login-container">
-    <div class="login-card" style="width: 500px; max-width: 95%;">
-        <div class="text-center mb-4">
-            <i class="fas fa-user-plus fa-4x text-success"></i>
-            <h2 class="mt-3">Create Account</h2>
-            <p class="text-muted">Traffic Management System Registration</p>
+                <form id="registerForm">
+                    <!-- Full Name & Username -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small text-secondary">Full Name</label>
+                            <input type="text" class="form-control" id="fullname" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small text-secondary">Username</label>
+                            <input type="text" class="form-control" id="username" required>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary">Email Address</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+
+                    <!-- Phone Number & Role -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small text-secondary">Phone Number</label>
+                            <input type="tel" class="form-control" id="phone" placeholder="Optional">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small text-secondary">Role</label>
+                            <select class="form-select" id="role" required>
+                                <option value="Traffic Officer" selected>Traffic Officer</option>
+                                <option value="Supervisor">Supervisor</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                        </div>
+                    </div> 
+
+                    <!-- Password & Confirm Password -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small text-secondary">Password</label>
+                            <input type="password" class="form-control" id="password" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small text-secondary">Confirm Password</label>
+                            <input type="password" class="form-control" id="confirm_password" required>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button class="btn btn-success w-100 py-2 fw-medium mt-2" type="submit">
+                        <i class="fa-solid fa-user-plus me-1"></i> Register Account
+                    </button>
+                </form>
+
+                <!-- Feedback Message Container -->
+                <div id="message" class="mt-3"></div>
+
+                <hr class="border-secondary my-4">
+
+                <!-- Login Redirect -->
+                <div class="text-center">
+                    <span class="small text-secondary">Already have an account?</span>
+                    <a href="/login" class="small text-primary text-decoration-none fw-semibold ms-1">Login here</a>
+                </div>
+            </div>
         </div>
-
-        <form id="registerForm">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Full Name</label>
-                    <input type="text" class="form-control" id="full_name" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Username</label>
-                    <input type="text" class="form-control" id="username" required>
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" required>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Phone Number</label>
-                <input type="tel" class="form-control" id="phone">
-            </div>
-
-          <div class="mb-3">
-    <label class="form-label">Address</label>
-    <textarea class="form-control" id="address" rows="2"></textarea>
-</div>  
-
-           <div class="mb-3">
-    <label class="form-label">Role</label>
-    <select class="form-select" id="role" required>
-        <option value="">Select Role</option>
-        <option value="Admin">Admin</option>
-        <option value="Supervisor">Supervisor</option>
-        <option value="Traffic Officer">Traffic Officer</option>
-    </select>
-</div> 
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Confirm Password</label>
-                    <input type="password" class="form-control" id="confirm_password" required>
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Profile Image</label>
-                <input type="file" class="form-control" id="profile_image">
-            </div>
-
-            <button class="btn btn-success w-100" type="submit">
-                <i class="fas fa-user-plus"></i> Register
-            </button>
-        </form>
-
-        <hr>
-
-        <div class="text-center">
-            Already have an account? <a href="/login">Login</a>
-        </div>
-
-        <div id="message" class="mt-3"></div>
     </div>
 </div>
-
 {% endblock %}
 
-
-{% block javascript %}
+{% block extra_js %}
 <script>
 document.getElementById("registerForm").addEventListener("submit", async function (e) {
     e.preventDefault();
 
     const message = document.getElementById("message");
-
-    const fullname = document.getElementById("full_name").value.trim();
+    const fullname = document.getElementById("fullname").value.trim();
     const username = document.getElementById("username").value.trim();
     const email = document.getElementById("email").value.trim();
     const phone = document.getElementById("phone").value.trim();
@@ -102,14 +98,15 @@ document.getElementById("registerForm").addEventListener("submit", async functio
 
     message.innerHTML = "";
 
+    // Client-side Password Match Check
     if (password !== confirm_password) {
-        message.innerHTML =
-            '<div class="alert alert-danger">Passwords do not match.</div>';
+        message.innerHTML = '<div class="alert alert-danger py-2 small">Passwords do not match.</div>';
         return;
     }
 
-    try {
+    message.innerHTML = '<div class="alert alert-info py-2 small">Creating your account...</div>';
 
+    try {
         const response = await fetch("/auth/register", {
             method: "POST",
             headers: {
@@ -119,7 +116,7 @@ document.getElementById("registerForm").addEventListener("submit", async functio
                 fullname: fullname,
                 username: username,
                 email: email,
-                phone: phone,
+                phone: phone || null,
                 role: role,
                 password: password,
                 confirm_password: confirm_password
@@ -129,28 +126,18 @@ document.getElementById("registerForm").addEventListener("submit", async functio
         const data = await response.json();
 
         if (response.ok) {
-
-            message.innerHTML =
-                '<div class="alert alert-success">Registration Successful!</div>';
-
+            message.innerHTML = '<div class="alert alert-success py-2 small">Registration Successful! Redirecting to login...</div>';
             setTimeout(() => {
                 window.location.href = "/login";
-            }, 1500);
-
+            }, 1200);
         } else {
-
-            message.innerHTML =
-                `<div class="alert alert-danger">${JSON.stringify(data.detail)}</div>`;
-
+            let errorMsg = typeof data.detail === "string" ? data.detail : "Registration failed.";
+            message.innerHTML = `<div class="alert alert-danger py-2 small">${errorMsg}</div>`;
         }
 
     } catch (error) {
-
-        console.error(error);
-
-        message.innerHTML =
-            '<div class="alert alert-danger">Unable to connect to server.</div>';
-
+        console.error("Registration error:", error);
+        message.innerHTML = '<div class="alert alert-danger py-2 small">Unable to connect to server.</div>';
     }
 });
 </script>
