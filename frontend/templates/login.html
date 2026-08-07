@@ -1,152 +1,616 @@
-{% extends "base_public.html" %}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-{% block title %}Login | AI Traffic Management System{% endblock %}
+    <title>Login | AI Traffic Management System</title>
 
-{% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-5">
-            <div class="card bg-body-tertiary border-secondary-subtle shadow-lg p-4 rounded-4">
-                <div class="text-center mb-4">
-                    <i class="fa-solid fa-traffic-light text-primary display-4 mb-2"></i>
-                    <h4 class="fw-bold">AI Traffic Control</h4>
-                    <p class="text-secondary small">Login to access System GIS</p>
-                </div>
+    <!-- Bootstrap -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
 
-                <form id="loginForm">
-                    <!-- Username Input -->
-                    <div class="mb-3">
-                        <label class="form-label small text-secondary">Username or Email</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-dark border-secondary text-secondary">
-                                <i class="fa-solid fa-user"></i>
-                            </span>
-                            <input 
-                                type="text" 
-                                id="username" 
-                                class="form-control" 
-                                placeholder="Enter Username" 
-                                required>
-                        </div>
-                    </div>
+    <!-- Font Awesome -->
+    <link
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        rel="stylesheet"
+    >
 
-                    <!-- Password Input + Toggle Eye Button -->
-                    <div class="mb-3">
-                        <label class="form-label small text-secondary">Password</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-dark border-secondary text-secondary">
-                                <i class="fa-solid fa-lock"></i>
-                            </span>
-                            <input 
-                                type="password" 
-                                id="password" 
-                                class="form-control" 
-                                placeholder="Enter Password" 
-                                required>
-                            <button 
-                                type="button" 
-                                class="btn btn-outline-secondary" 
-                                id="togglePassword">
-                                <i class="fa-solid fa-eye" id="toggleIcon"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Remember Me Checkbox -->
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="remember">
-                        <label class="form-check-label small text-secondary" for="remember">
-                            Remember Me
-                        </label>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <button type="submit" class="btn btn-primary w-100 py-2 fw-medium">
-                        <i class="fa-solid fa-right-to-bracket me-2"></i> Login to Dashboard
-                    </button>
-                </form>
-
-                <!-- Feedback Message Container -->
-                <div id="loginMessage" class="mt-3"></div>
-
-                <hr class="border-secondary my-4">
-
-                <!-- Registration Redirect -->
-                <div class="text-center">
-                    <span class="small text-secondary">Don't have an account?</span>
-                    <a href="/register" class="small text-primary text-decoration-none fw-semibold ms-1">Register here</a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    // Password visibility toggle
-    const togglePassword = document.getElementById("togglePassword");
-    const passwordInput = document.getElementById("password");
-    const toggleIcon = document.getElementById("toggleIcon");
-
-    togglePassword.addEventListener("click", function () {
-        if (passwordInput.type === "password") {
-            passwordInput.type = "text";
-            toggleIcon.className = "fa-solid fa-eye-slash";
-        } else {
-            passwordInput.type = "password";
-            toggleIcon.className = "fa-solid fa-eye";
+    <style>
+        * {
+            box-sizing: border-box;
         }
-    });
 
-    // Login Form Submit Handler
-    document.getElementById("loginForm").addEventListener("submit", async function (e) {
-        e.preventDefault();
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top left, #172554 0%, transparent 35%),
+                radial-gradient(circle at bottom right, #064e3b 0%, transparent 35%),
+                #020617;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
 
-        const username = document.getElementById("username").value.trim();
-        const password = document.getElementById("password").value;
-        const message = document.getElementById("loginMessage");
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
 
-        message.innerHTML = '<div class="alert alert-info py-2 small">Authenticating...</div>';
+        .login-card {
+            width: 100%;
+            max-width: 460px;
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 18px;
+            padding: 35px;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+        }
 
+        .logo {
+            width: 70px;
+            height: 70px;
+            margin: auto;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2563eb, #06b6d4);
+            font-size: 32px;
+        }
+
+        .system-title {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .system-subtitle {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .form-label {
+            color: #cbd5e1;
+            font-weight: 600;
+        }
+
+        .form-control,
+        .form-select {
+            background: #020617;
+            border: 1px solid #334155;
+            color: white;
+            min-height: 48px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            background: #020617;
+            color: white;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+        }
+
+        .form-select option {
+            background: #020617;
+            color: white;
+        }
+
+        .login-btn {
+            min-height: 50px;
+            border-radius: 10px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #2563eb, #0891b2);
+            border: none;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .role-info {
+            display: none;
+            margin-top: 8px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: rgba(37, 99, 235, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            color: #93c5fd;
+            font-size: 13px;
+        }
+
+        .error-box {
+            display: none;
+            border-radius: 8px;
+            padding: 12px;
+            background: rgba(220, 38, 38, 0.12);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            color: #fca5a5;
+            font-size: 14px;
+        }
+
+        .success-box {
+            display: none;
+            border-radius: 8px;
+            padding: 12px;
+            background: rgba(22, 163, 74, 0.12);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            color: #86efac;
+            font-size: 14px;
+        }
+
+        .register-link {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+
+        .register-link:hover {
+            color: #93c5fd;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="login-wrapper">
+
+    <div class="login-card">
+
+        <!-- Logo -->
+        <div class="text-center mb-4">
+
+            <div class="logo mb-3">
+                <i class="fa-solid fa-traffic-light"></i>
+            </div>
+
+            <h3 class="system-title mb-1">
+                AI Traffic Management
+            </h3>
+
+            <div class="system-subtitle">
+                Traffic Intelligence & Management System
+            </div>
+
+        </div>
+
+
+        <!-- Login Form -->
+        <form id="loginForm">
+
+            <!-- Username -->
+            <div class="mb-3">
+
+                <label class="form-label">
+                    <i class="fa-solid fa-user me-2"></i>
+                    Username
+                </label>
+
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    class="form-control"
+                    placeholder="Enter username"
+                    required
+                    autocomplete="username"
+                >
+
+            </div>
+
+
+            <!-- Password -->
+            <div class="mb-3">
+
+                <label class="form-label">
+                    <i class="fa-solid fa-lock me-2"></i>
+                    Password
+                </label>
+
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    class="form-control"
+                    placeholder="Enter password"
+                    required
+                    autocomplete="current-password"
+                >
+
+            </div>
+
+
+            <!-- ROLE -->
+            <div class="mb-3">
+
+                <label class="form-label">
+
+                    <i class="fa-solid fa-user-shield me-2"></i>
+
+                    Login As
+
+                </label>
+
+                <select
+                    id="role"
+                    name="role"
+                    class="form-select"
+                    required
+                >
+
+                    <option value="">
+                        Select your role
+                    </option>
+
+                    <option value="Admin">
+                        Admin
+                    </option>
+
+                    <option value="Supervisor">
+                        Traffic Supervisor
+                    </option>
+
+                    <option value="Traffic Officer">
+                        Traffic Officer
+                    </option>
+
+                </select>
+
+
+                <!-- Role explanation -->
+                <div id="roleInfo" class="role-info"></div>
+
+            </div>
+
+
+            <!-- Error -->
+            <div
+                id="errorBox"
+                class="error-box mb-3">
+            </div>
+
+
+            <!-- Success -->
+            <div
+                id="successBox"
+                class="success-box mb-3">
+            </div>
+
+
+            <!-- Login button -->
+            <button
+                type="submit"
+                id="loginBtn"
+                class="btn btn-primary login-btn w-100"
+            >
+
+                <i class="fa-solid fa-right-to-bracket me-2"></i>
+
+                Login
+
+            </button>
+
+        </form>
+
+
+        <!-- Register -->
+        <div class="text-center mt-4">
+
+            <span class="text-secondary">
+                Don't have an account?
+            </span>
+
+            <a
+                href="/register"
+                class="register-link ms-1"
+            >
+                Register
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+const loginForm = document.getElementById("loginForm");
+
+const usernameInput = document.getElementById("username");
+
+const passwordInput = document.getElementById("password");
+
+const roleInput = document.getElementById("role");
+
+const loginBtn = document.getElementById("loginBtn");
+
+const errorBox = document.getElementById("errorBox");
+
+const successBox = document.getElementById("successBox");
+
+const roleInfo = document.getElementById("roleInfo");
+
+
+// =====================================================
+// ROLE INFORMATION
+// =====================================================
+
+roleInput.addEventListener("change", function () {
+
+    const role = this.value;
+
+    roleInfo.style.display = "none";
+    roleInfo.innerHTML = "";
+
+    if (role === "Admin") {
+
+        roleInfo.innerHTML =
+            '<i class="fa-solid fa-shield-halved me-2"></i>' +
+            '<strong>Admin:</strong> Full system access including incident management, reports, analytics and alerts.';
+
+        roleInfo.style.display = "block";
+
+    }
+
+    else if (role === "Supervisor") {
+
+        roleInfo.innerHTML =
+            '<i class="fa-solid fa-user-tie me-2"></i>' +
+            '<strong>Traffic Supervisor:</strong> Dashboard, traffic analytics, alerts and reports.';
+
+        roleInfo.style.display = "block";
+
+    }
+
+    else if (role === "Traffic Officer") {
+
+        roleInfo.innerHTML =
+            '<i class="fa-solid fa-road me-2"></i>' +
+            '<strong>Traffic Officer:</strong> Normal traffic dashboard and alerts.';
+
+        roleInfo.style.display = "block";
+
+    }
+
+});
+
+
+// =====================================================
+// SHOW ERROR
+// =====================================================
+
+function showError(message) {
+
+    errorBox.innerHTML =
+        '<i class="fa-solid fa-circle-exclamation me-2"></i>' +
+        message;
+
+    errorBox.style.display = "block";
+
+    successBox.style.display = "none";
+}
+
+
+// =====================================================
+// SHOW SUCCESS
+// =====================================================
+
+function showSuccess(message) {
+
+    successBox.innerHTML =
+        '<i class="fa-solid fa-circle-check me-2"></i>' +
+        message;
+
+    successBox.style.display = "block";
+
+    errorBox.style.display = "none";
+}
+
+
+// =====================================================
+// LOGIN
+// =====================================================
+
+loginForm.addEventListener("submit", async function (event) {
+
+    event.preventDefault();
+
+    errorBox.style.display = "none";
+    successBox.style.display = "none";
+
+
+    const username = usernameInput.value.trim();
+
+    const password = passwordInput.value;
+
+    const selectedRole = roleInput.value;
+
+
+    // Validate role
+
+    if (!selectedRole) {
+
+        showError("Please select your login role.");
+
+        return;
+    }
+
+
+    // Disable button
+
+    loginBtn.disabled = true;
+
+    loginBtn.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-2"></span>' +
+        'Logging in...';
+
+
+    try {
+
+        // FastAPI OAuth2 login
         const formData = new URLSearchParams();
+
         formData.append("username", username);
+
         formData.append("password", password);
 
-        try {
-            const response = await fetch("/auth/login", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                body: formData
-            });
 
-            const data = await response.json();
+        const response = await fetch("/auth/login", {
 
-            if (response.ok) {
-                // Store tokens in both localStorage and cookies for compatibility
-                localStorage.setItem("access_token", data.access_token);
-                localStorage.setItem("token", data.access_token);
-                localStorage.setItem("username", username);
-                document.cookie = `access_token=${data.access_token}; path=/;`;
-                
-                if (data.user) {
-                    localStorage.setItem("user", JSON.stringify(data.user));
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                    "application/x-www-form-urlencoded"
+            },
+
+            body: formData
+
+        });
+
+
+        const data = await response.json();
+
+
+        if (!response.ok) {
+
+            let message = "Login failed.";
+
+            if (data.detail) {
+
+                if (Array.isArray(data.detail)) {
+
+                    message = data.detail
+                        .map(error => error.msg)
+                        .join(", ");
+
+                } else {
+
+                    message = data.detail;
+
                 }
 
-                message.innerHTML = '<div class="alert alert-success py-2 small">Login Successful! Redirecting...</div>';
-
-                setTimeout(function () {
-                    window.location.href = "/dashboard";
-                }, 800);
-            } else {
-                message.innerHTML = `<div class="alert alert-danger py-2 small">${data.detail || "Login failed"}</div>`;
             }
-        } catch (error) {
-            message.innerHTML = '<div class="alert alert-danger py-2 small">Unable to connect to server.</div>';
-            console.error("Login error:", error);
+
+            throw new Error(message);
+
         }
-    });
+
+
+        // =================================================
+        // SAVE TOKEN
+        // =================================================
+
+        const token =
+            data.access_token ||
+            data.token;
+
+
+        if (!token) {
+
+            throw new Error(
+                "Login succeeded but no access token was returned."
+            );
+
+        }
+
+
+        localStorage.setItem(
+            "access_token",
+            token
+        );
+
+        localStorage.setItem(
+            "token",
+            token
+        );
+
+
+        // =================================================
+        // SAVE USERNAME
+        // =================================================
+
+        localStorage.setItem(
+            "username",
+            username
+        );
+
+
+        // =================================================
+        // SAVE SELECTED ROLE
+        // =================================================
+
+        localStorage.setItem(
+            "user_role",
+            selectedRole
+        );
+
+
+        // Also save complete user information
+
+        localStorage.setItem(
+            "user",
+            JSON.stringify({
+
+                username: username,
+
+                role: selectedRole
+
+            })
+        );
+
+
+        // =================================================
+        // SUCCESS
+        // =================================================
+
+        showSuccess(
+            "Login successful. Opening your dashboard..."
+        );
+
+
+        // =================================================
+        // REDIRECT
+        // =================================================
+
+        setTimeout(function () {
+
+            window.location.href = "/dashboard";
+
+        }, 700);
+
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Login error:",
+            error
+        );
+
+        showError(
+            error.message ||
+            "Unable to login. Please try again."
+        );
+
+
+        loginBtn.disabled = false;
+
+        loginBtn.innerHTML =
+            '<i class="fa-solid fa-right-to-bracket me-2"></i>' +
+            'Login';
+
+    }
+
+});
+
 </script>
-{% endblock %}
+<script src="/static/js/login.js"></script>
+</body>
+</html>

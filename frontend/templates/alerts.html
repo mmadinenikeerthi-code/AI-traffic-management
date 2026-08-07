@@ -1,12 +1,198 @@
-{% extends "base_dashboard.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Alerts | AI Traffic Management</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .sidebar {
+            min-height: 100vh;
+            background-color: #212529;
+            color: #fff;
+        }
+        .sidebar a {
+            color: #adb5bd;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: block;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+        .sidebar a:hover, .sidebar a.active {
+            color: #fff;
+            background-color: #0d6efd;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+    </style>
+</head>
+<body>
 
-{% block title %}Alerts | AI Traffic Management{% endblock %}
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar Navigation -->
+            <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block sidebar collapse p-3">
+                <h4 class="text-white py-2 px-2 mb-4"><i class="fa-solid fa-traffic-light me-2"></i>AI Traffic</h4>
+                <ul class="nav flex-column">
+                    <li class="nav-item"><a href="/dashboard" class="nav-link"><i class="fa-solid fa-chart-line me-2"></i>Dashboard</a></li>
+                    <li class="nav-item"><a href="/traffic-gis" class="nav-link"><i class="fa-solid fa-map-location-dot me-2"></i>GIS & Heatmap</a></li>
+                    <li class="nav-item"><a href="/route-planner" class="nav-link"><i class="fa-solid fa-route me-2"></i>Route Planner</a></li>
+                    <li class="nav-item"><a href="/hotspots" class="nav-link"><i class="fa-solid fa-fire me-2"></i>Hotspots</a></li>
+                    <li class="nav-item"><a href="/analytics" class="nav-link"><i class="fa-solid fa-chart-pie me-2"></i>Analytics</a></li>
+                    <li class="nav-item"><a href="/reports" class="nav-link"><i class="fa-solid fa-file-lines me-2"></i>Reports</a></li>
+                    <li class="nav-item"><a href="/alerts" class="nav-link active"><i class="fa-solid fa-triangle-exclamation me-2"></i>Alerts</a></li>
+                    <li class="nav-item mt-5"><a href="/login" id="logoutBtn" class="nav-link text-danger"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
+                </ul>
+            </nav>
 
-{% block content %}
-<div class="p-4">
-    <h3 class="fw-bold mb-3"><i class="fa-solid fa-bell text-danger me-2"></i>Active Traffic Alerts</h3>
-    <div class="card bg-body-tertiary border-secondary-subtle p-4">
-        <p class="text-secondary mb-0">No active critical alerts logged in database.</p>
+            <!-- Main Content Area -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">System Alerts & Incidents</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadAlerts()">
+                            <i class="fa-solid fa-rotate me-1"></i> Refresh Alerts
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Alerts Table Container -->
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle" id="alertsTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Type</th>
+                                        <th>Severity</th>
+                                        <th>Location</th>
+                                        <th>Description</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="alertsTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">Loading active system alerts...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
-</div>
-{% endblock %}
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Secure API Fetch Script & Alerts Controller -->
+    <script>
+        // Authentication guard and fetch helper
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem("access_token");
+            
+            // If there's no token, redirect to login immediately
+            if (!token) {
+                window.location.href = "/login";
+                return;
+            }
+
+            options.headers = options.headers || {};
+            options.headers["Authorization"] = `Bearer ${token}`;
+
+            const response = await fetch(url, options);
+            
+            if (response.status === 401) {
+                // Token expired or invalid, clear storage and redirect
+                localStorage.clear();
+                window.location.href = "/login";
+                return;
+            }
+            
+            return response;
+        }
+
+        async function loadAlerts() {
+            const tbody = document.getElementById("alertsTableBody");
+            try {
+                const response = await fetchWithAuth("/api/alerts");
+                if (!response) return;
+                
+                const alerts = await response.json();
+                
+                if (!alerts || alerts.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No active alerts found. System running normally.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = "";
+                alerts.forEach(alert => {
+                    let badgeClass = "bg-secondary";
+                    if (alert.severity === "High" || alert.severity === "CRITICAL") badgeClass = "bg-danger";
+                    else if (alert.severity === "Moderate" || alert.severity === "Medium") badgeClass = "bg-warning text-dark";
+                    else if (alert.severity === "Low") badgeClass = "bg-info text-dark";
+
+                    let statusBadge = alert.status === "Resolved" ? '<span class="badge bg-success">Resolved</span>' : '<span class="badge bg-danger">Active</span>';
+                    let actionBtn = alert.status !== "Resolved" 
+                        ? `<button class="btn btn-sm btn-outline-success" onclick="resolveAlert(${alert.id})">Resolve</button>` 
+                        : `<span class="text-muted small">Closed</span>`;
+
+                    const row = `
+                        <tr>
+                            <td>#${alert.id}</td>
+                            <td><strong>${alert.alert_type || alert.title || "Incident"}</strong></td>
+                            <td><span class="badge ${badgeClass}">${alert.severity}</span></td>
+                            <td>${alert.location || "City-Wide"}</td>
+                            <td>${alert.description || "N/A"}</td>
+                            <td>${statusBadge}</td>
+                            <td>${actionBtn}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error("Failed to load alerts:", error);
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">Error loading alerts data from server.</td></tr>`;
+            }
+        }
+
+        async function resolveAlert(alertId) {
+            try {
+                const response = await fetchWithAuth(`/alerts/resolve/${alertId}`, {
+                    method: "POST"
+                });
+                if (response && response.ok) {
+                    loadAlerts();
+                }
+            } catch (err) {
+                console.error("Error resolving alert:", err);
+            }
+        }
+
+        // Logout event handler
+        document.getElementById("logoutBtn").addEventListener("click", (e) => {
+            e.preventDefault();
+            localStorage.clear();
+            window.location.href = "/login";
+        });
+
+        // Initialize alerts loading on DOM ready
+        document.addEventListener("DOMContentLoaded", () => {
+            loadAlerts();
+        });
+    </script>
+</body>
+</html>

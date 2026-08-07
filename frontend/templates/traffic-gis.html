@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered GIS Traffic Management Dashboard</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 16px;
+        }
+
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-width: 1800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Top KPI Cards */
+        header.kpi-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .kpi-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .kpi-title {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .kpi-value.green { color: var(--success); }
+        .kpi-value.yellow { color: var(--warning); }
+        .kpi-value.red { color: var(--danger); }
+
+        /* Toolbar Section */
+        .toolbar {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .search-group {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            min-width: 280px;
+            position: relative;
+        }
+
+        .search-group input {
+            flex: 1;
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+
+        .search-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        /* Autocomplete Results Box Dropdown Below Input */
+        #searchResultsBox {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 80px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 4px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .search-result-item {
+            padding: 10px 14px;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .search-result-item:hover {
+            background-color: var(--bg-card-hover);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        button, select {
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        button:hover, select:hover {
+            background-color: var(--bg-card-hover);
+            border-color: var(--accent-blue);
+        }
+
+        button.active {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        /* Main Content Layout (Map + Sidebar) */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 16px;
+            height: 520px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            #map { height: 400px; }
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            z-index: 1;
+        }
+
+        /* AI Recommendations Sidebar */
+        aside.ai-sidebar {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            max-height: 520px;
+        }
+
+        .sidebar-title {
+            font-size: 1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .rec-card {
+            background-color: var(--bg-main);
+            border-left: 4px solid var(--danger);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+
+        .rec-card.warning { border-left-color: var(--warning); }
+        .rec-card.success { border-left-color: var(--success); }
+
+        .rec-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+        }
+
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+        .badge.high { background-color: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .badge.moderate { background-color: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .badge.low { background-color: rgba(16, 185, 129, 0.2); color: var(--success); }
+
+        /* Bottom Section Grid */
+        .bottom-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 280px;
+        }
+
+        .panel-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .stat-item {
+            background-color: var(--bg-main);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); }
+        .stat-val { font-size: 1.1rem; font-weight: 700; }
+
+        .road-details-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            background-color: var(--bg-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        .chart-container {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            height: 180px;
+        }
+
+        .alert-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            max-height: 200px;
+        }
+
+        .alert-item {
+            background-color: var(--bg-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        footer {
+            text-align: center;
+            padding: 12px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+
+    <!-- Top KPI Cards -->
+    <header class="kpi-container">
+        <div class="kpi-card">
+            <span class="kpi-title">Current Speed</span>
+            <span class="kpi-value" id="kpi-speed">38.4 km/h</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Congestion Level</span>
+            <span class="kpi-value yellow" id="kpi-congestion">Moderate (64%)</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Live Vehicles</span>
+            <span class="kpi-value" id="kpi-vehicles">1,428</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Weather</span>
+            <span class="kpi-value">Clear 31°C</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Last Updated</span>
+            <span class="kpi-value" id="kpi-updated" style="font-size: 1.2rem;">Just now</span>
+        </div>
+    </header>
+
+    <!-- Toolbar Section with Universal World Search -->
+    <section class="toolbar">
+        <div class="search-group">
+            <input type="text" id="searchInput" placeholder="Search any place, city, or road worldwide (e.g. New York, Tokyo, Mumbai)..." oninput="handleLiveAutocomplete()" onkeypress="if(event.key==='Enter') handleWorldSearch()">
+            <div id="searchResultsBox"></div>
+            <button onclick="handleWorldSearch()">Search</button>
+        </div>
+        <div class="action-buttons">
+            <button id="btn-refresh" onclick="triggerRefresh()">🔄 Refresh</button>
+            <button id="btn-heatmap" onclick="toggleHeatmap()">🔥 Heatmap</button>
+            <button id="btn-marker" onclick="toggleMarkers()" class="active">📍 Markers</button>
+            <button onclick="resetMapView()">Reset View</button>
+            <select id="roadFilter" onchange="filterRoads()">
+                <option value="all">All Roads</option>
+                <option value="highway">Highways</option>
+                <option value="city">City Roads</option>
+                <option value="junction">Junctions</option>
+            </select>
+            <select id="timeFilter">
+                <option value="15m">Last 15 mins</option>
+                <option value="1h">Last 1 hour</option>
+                <option value="today">Today</option>
+            </select>
+        </div>
+    </section>
+
+    <!-- Main Map & Right Sidebar -->
+    <section class="main-content">
+        <div id="map"></div>
+
+        <aside class="ai-sidebar">
+            <div class="sidebar-title">🤖 AI Recommendations</div>
+            <div id="ai-recommendations-container"></div>
+        </aside>
+    </section>
+
+    <!-- Bottom Section Panels -->
+    <section class="bottom-section">
+        <div class="panel">
+            <div class="panel-title">📊 Live Statistics (YOLOv8 Stream)</div>
+            <div class="stat-grid">
+                <div class="stat-item"><span class="stat-label">Cars</span><span class="stat-val" id="stat-cars">840</span></div>
+                <div class="stat-item"><span class="stat-label">Bikes</span><span class="stat-val" id="stat-bikes">320</span></div>
+                <div class="stat-item"><span class="stat-label">Buses</span><span class="stat-val" id="stat-buses">95</span></div>
+                <div class="stat-item"><span class="stat-label">Trucks</span><span class="stat-val" id="stat-trucks">140</span></div>
+                <div class="stat-item"><span class="stat-label">Emergency</span><span class="stat-val" style="color:var(--danger)" id="stat-emergency">3</span></div>
+                <div class="stat-item"><span class="stat-label">Avg Speed</span><span class="stat-val" id="stat-speed">38 km/h</span></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">🛣️ Selected Road Details</div>
+            <div class="road-details-list" id="roadDetailsPanel">
+                <div class="detail-row"><span>Road Name:</span><strong id="det-name">Central Corridor Junction</strong></div>
+                <div class="detail-row"><span>Latitude:</span><strong id="det-lat">15.8281° N</strong></div>
+                <div class="detail-row"><span>Longitude:</span><strong id="det-lng">78.0373° E</strong></div>
+                <div class="detail-row"><span>Vehicle Count:</span><strong id="det-count">342 vehicles</strong></div>
+                <div class="detail-row"><span>Average Speed:</span><strong id="det-speed">22 km/h</strong></div>
+                <div class="detail-row"><span>Traffic Level:</span><strong id="det-level" style="color:var(--danger)">HEAVY (Red)</strong></div>
+                <div class="detail-row"><span>Last Updated:</span><strong id="det-time">5 secs ago</strong></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">📈 Hourly Traffic Analytics</div>
+            <div class="chart-container">
+                <canvas id="trafficChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">🚨 Live System Alerts</div>
+            <div class="alert-list" id="alertList">
+                <div class="alert-item">🔴 <strong>Heavy Traffic</strong> detected on main corridor.</div>
+                <div class="alert-item">🚑 <strong>Emergency Vehicle</strong> cleared near sector loop.</div>
+                <div class="alert-item">🚧 <strong>Road Work</strong> ongoing near exit lane.</div>
+                <div class="alert-item">⚠️ <strong>Congestion Spike</strong> predicted for next 30 minutes.</div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <span>Tech Stack:</span>
+        <span>OpenStreetMap</span> • 
+        <span>Leaflet.js</span> • 
+        <span>YOLOv8 AI</span> • 
+        <span>FastAPI Backend</span> • 
+        <span>SQLite DB</span>
+    </footer>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet Heat Plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+
+<script>
+    // Initial Traffic Simulation Data Pool
+    let trafficData = [
+        { id: 1, name: "MG Road Junction", lat: 15.8281, lng: 78.0373, type: "city", status: "red", speed: "18 km/h", count: 412, action: "Reduce green signal phase by 20%", confidence: "94%" },
+        { id: 2, name: "NH-44 Bypass Corridor", lat: 15.8450, lng: 78.0120, type: "highway", status: "green", speed: "65 km/h", count: 180, action: "Optimal flow. Maintain current timing.", confidence: "98%" },
+        { id: 3, name: "Station Road Crossing", lat: 15.8190, lng: 78.0510, type: "junction", status: "yellow", speed: "32 km/h", count: 260, action: "Extend green wave for 10 seconds", confidence: "89%" },
+        { id: 4, name: "Tech Park Avenue", lat: 15.8340, lng: 78.0250, type: "city", status: "red", speed: "14 km/h", count: 520, action: "Divert heavy trucks to Ring Road", confidence: "91%" },
+        { id: 5, name: "Civil Lines Boulevard", lat: 15.8500, lng: 78.0400, type: "highway", status: "green", speed: "72 km/h", count: 110, action: "Normal operations active.", confidence: "99%" }
+    ];
+
+    // Initialize Leaflet Map
+    const map = L.map('map').setView([15.8281, 78.0373], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let markersLayer = L.layerGroup().addTo(map);
+    let heatLayerGroup = null;
+    let showHeatmapFlag = false;
+    let showMarkersFlag = true;
+
+    function getColorHex(status) {
+        if (status === 'red') return '#ef4444';
+        if (status === 'yellow') return '#f59e0b';
+        return '#10b981';
+    }
+
+    // Render Markers with Green/Yellow/Red indicators
+    function renderMapMarkers(filterType = 'all') {
+        markersLayer.clearLayers();
+        let heatPoints = [];
+
+        trafficData.forEach(item => {
+            if (filterType !== 'all' && item.type !== filterType) return;
+
+            heatPoints.push([item.lat, item.lng, item.status === 'red' ? 1.0 : item.status === 'yellow' ? 0.6 : 0.2]);
+
+            if (showMarkersFlag) {
+                const colorHex = getColorHex(item.status);
+                const customIcon = L.divIcon({
+                    className: 'custom-map-pin',
+                    html: `<div style="background-color: ${colorHex}; width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 8px ${colorHex};"></div>`,
+                    iconSize: [18, 18],
+                    iconAnchor: [9, 9]
+                });
+
+                const marker = L.marker([item.lat, item.lng], { icon: customIcon });
+
+                marker.bindPopup(`
+                    <div style="color:#0f172a; font-family:sans-serif;">
+                        <strong>${item.name}</strong><br>
+                        Status: <span style="text-transform:uppercase; font-weight:bold; color:${colorHex}">${item.status}</span><br>
+                        Speed: ${item.speed}<br>
+                        Vehicles: ${item.count} count<br>
+                        <em>AI: ${item.action}</em>
+                    </div>
+                `);
+
+                marker.on('click', () => updateRoadDetailsPanel(item));
+                markersLayer.addLayer(marker);
+            }
+        });
+
+        if (heatLayerGroup) map.removeLayer(heatLayerGroup);
+        heatLayerGroup = L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 17 });
+        if (showHeatmapFlag) heatLayerGroup.addTo(map);
+    }
+
+    function updateRoadDetailsPanel(item) {
+        document.getElementById('det-name').innerText = item.name;
+        document.getElementById('det-lat').innerText = item.lat.toFixed(4) + "° N";
+        document.getElementById('det-lng').innerText = item.lng.toFixed(4) + "° E";
+        document.getElementById('det-count').innerText = item.count + " vehicles";
+        document.getElementById('det-speed').innerText = item.speed;
+        
+        const lvlElement = document.getElementById('det-level');
+        lvlElement.innerText = item.status.toUpperCase();
+        lvlElement.style.color = getColorHex(item.status);
+        document.getElementById('det-time').innerText = "Just now";
+    }
+
+    function loadAIRecommendations() {
+        const container = document.getElementById('ai-recommendations-container');
+        container.innerHTML = '';
+
+        trafficData.forEach(item => {
+            const badgeClass = item.status === 'red' ? 'high' : item.status === 'yellow' ? 'moderate' : 'low';
+            const cardClass = item.status === 'red' ? '' : item.status === 'yellow' ? 'warning' : 'success';
+            
+            const card = document.createElement('div');
+            card.className = `rec-card ${cardClass}`;
+            card.innerHTML = `
+                <div class="rec-header">
+                    <span>📍 ${item.name}</span>
+                    <span class="badge ${badgeClass}">${item.status.toUpperCase()}</span>
+                </div>
+                <div>Action: <strong>${item.action}</strong></div>
+                <div style="color: var(--text-muted); font-size: 0.75rem;">AI Confidence: ${item.confidence}</div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // Live Autocomplete Suggestions Box Handler
+    let autocompleteTimeout = null;
+    function handleLiveAutocomplete() {
+        const query = document.getElementById('searchInput').value.trim();
+        const box = document.getElementById('searchResultsBox');
+        if (query.length < 2) {
+            box.style.display = 'none';
+            return;
+        }
+
+        clearTimeout(autocompleteTimeout);
+        autocompleteTimeout = setTimeout(() => {
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+                .then(res => res.json())
+                .then(data => {
+                    box.innerHTML = '';
+                    if (data && data.length > 0) {
+                        box.style.display = 'block';
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'search-result-item';
+                            div.innerText = item.display_name;
+                            div.onclick = () => {
+                                document.getElementById('searchInput').value = item.display_name;
+                                box.style.display = 'none';
+                                selectLocation(parseFloat(item.lat), parseFloat(item.lon), item.display_name);
+                            };
+                            box.appendChild(div);
+                        });
+                    } else {
+                        box.style.display = 'none';
+                    }
+                })
+                .catch(err => console.error(err));
+        }, 300);
+    }
+
+    // Select specific location from search or autocomplete
+    function selectLocation(lat, lon, displayName) {
+        map.setView([lat, lon], 13);
+        const statuses = ['green', 'yellow', 'red'];
+        const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+        
+        const dynamicItem = {
+            id: Date.now(),
+            name: displayName.split(',')[0],
+            lat: lat,
+            lng: lon,
+            type: "city",
+            status: randomStatus,
+            speed: randomStatus === 'red' ? '15 km/h' : randomStatus === 'yellow' ? '35 km/h' : '60 km/h',
+            count: Math.floor(100 + Math.random() * 450),
+            action: randomStatus === 'red' ? 'Reroute secondary traffic lanes' : 'Flow optimal, monitor corridor',
+            confidence: '92%'
+        };
+
+        trafficData.push(dynamicItem);
+        renderMapMarkers(document.getElementById('roadFilter').value);
+        updateRoadDetailsPanel(dynamicItem);
+        loadAIRecommendations();
+    }
+
+    // Universal OpenStreetMap Nominatim World Search Integration
+    function handleWorldSearch() {
+        document.getElementById('searchResultsBox').style.display = 'none';
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) return;
+
+        // Check local mock nodes first
+        const foundLocal = trafficData.find(item => item.name.toLowerCase().includes(query.toLowerCase()));
+        if (foundLocal) {
+            map.setView([foundLocal.lat, foundLocal.lng], 14);
+            updateRoadDetailsPanel(foundLocal);
+            return;
+        }
+
+        // If not local, query OpenStreetMap global API for any place in the world
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.length > 0) {
+                    selectLocation(parseFloat(data[0].lat), parseFloat(data[0].lon), data[0].display_name);
+                } else {
+                    alert("Location not found worldwide. Please try refining your query.");
+                }
+            })
+            .catch(error => {
+                console.error("Geocoding error:", error);
+                alert("Error connecting to global search directory.");
+            });
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'],
+                datasets: [{
+                    label: 'Hourly Vehicle Density',
+                    data: [650, 1100, 950, 890, 1420, 1300],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#334155' } },
+                    y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#334155' } }
+                }
+            }
+        });
+    }
+
+    function toggleHeatmap() {
+        showHeatmapFlag = !showHeatmapFlag;
+        const btn = document.getElementById('btn-heatmap');
+        if (showHeatmapFlag) {
+            btn.classList.add('active');
+            heatLayerGroup.addTo(map);
+        } else {
+            btn.classList.remove('active');
+            map.removeLayer(heatLayerGroup);
+        }
+    }
+
+    function toggleMarkers() {
+        showMarkersFlag = !showMarkersFlag;
+        const btn = document.getElementById('btn-marker');
+        if (showMarkersFlag) btn.classList.add('active');
+        else btn.classList.remove('active');
+        renderMapMarkers(document.getElementById('roadFilter').value);
+    }
+
+    function filterRoads() {
+        renderMapMarkers(document.getElementById('roadFilter').value);
+    }
+
+    function resetMapView() {
+        map.setView([15.8281, 78.0373], 13);
+        document.getElementById('searchInput').value = '';
+        document.getElementById('searchResultsBox').style.display = 'none';
+        renderMapMarkers('all');
+    }
+
+    function triggerRefresh() {
+        const btn = document.getElementById('btn-refresh');
+        btn.innerText = '⏳ Updating...';
+        setTimeout(() => {
+            btn.innerText = '🔄 Refresh';
+            document.getElementById('kpi-updated').innerText = 'Just now';
+            document.getElementById('kpi-vehicles').innerText = Math.floor(1300 + Math.random() * 250);
+            renderMapMarkers(document.getElementById('roadFilter').value);
+        }, 600);
+    }
+
+    setInterval(() => {
+        document.getElementById('kpi-updated').innerText = new Date().toLocaleTimeString();
+    }, 5000);
+
+    window.onload = function() {
+        renderMapMarkers('all');
+        loadAIRecommendations();
+        initChart();
+        updateRoadDetailsPanel(trafficData[0]);
+    };
+</script>
+
+</body>
+</html>

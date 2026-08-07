@@ -19,3 +19,8 @@ pyvenv.cfg
 *.log
 app/uploads/
 app/outputs/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm

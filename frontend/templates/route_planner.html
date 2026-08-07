@@ -1,106 +1,296 @@
 {% extends "base.html" %}
 
-{% block title %}Route Planner - Traffic GIS{% endblock %}
+{% block title %}Route Planner - Dynamic Traffic GIS{% endblock %}
 
 {% block extra_css %}
-<!-- Leaflet Routing Machine CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+<!-- Leaflet CSS & Routing Machine CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 <style>
-    #map { height: 100vh; width: 100%; }
+    .route-planner-layout { display: flex; height: calc(100vh - 70px); width: 100%; overflow: hidden; }
+    #map { flex-grow: 1; height: 100%; z-index: 1; }
+    .control-sidebar { width: 400px; background: #ffffff; padding: 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.1); overflow-y: auto; z-index: 1000; }
+    .suggestions-box { position: absolute; background: white; border: 1px solid #cbd5e1; border-radius: 6px; max-height: 180px; overflow-y: auto; width: calc(100% - 40px); z-index: 1010; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .suggestion-item { padding: 8px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
+    .suggestion-item:hover { background: #f8fafc; color: #2563eb; }
+    .route-card { border: 2px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; background: #f8fafc; }
+    .route-card:hover { border-color: #cbd5e1; }
+    .route-card.active { border-color: #2563eb; background: #eff6ff; box-shadow: 0 2px 8px rgba(37,99,235,0.15); }
+    .leaflet-routing-container { display: none !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex h-100">
+<div class="route-planner-layout">
     <!-- Left Navigation Input Panel -->
-    <div class="bg-body-tertiary border-end border-secondary-subtle p-4" style="width: 380px;">
-        <h5 class="fw-bold mb-1">Route Planner</h5>
-        <p class="text-secondary small mb-4">Powered by OSRM & OpenStreetMap</p>
+    <div class="control-sidebar">
+        <h5 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-route text-primary me-2"></i>Dynamic Route Planner</h5>
+        <p class="text-secondary small mb-4">Real-time OSRM & OpenStreetMap calculation</p>
 
-        <form id="route-form">
-            <div class="mb-3">
-                <label class="form-label text-secondary small">Origin</label>
-                <input type="text" id="origin" class="form-bg-dark form-control" value="Silk Board, Bengaluru">
-            </div>
-            <div class="mb-3">
-                <label class="form-label text-secondary small">Destination</label>
-                <input type="text" id="destination" class="form-control" value="Majestic, Bengaluru">
-            </div>
-
-            <div class="mb-4">
-                <label class="form-label text-secondary small">Travel Mode</label>
-                <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="mode" id="mode-car" checked>
-                    <label class="btn btn-outline-primary btn-sm" for="mode-car"><i class="fa-solid fa-car me-1"></i> Car</label>
-
-                    <input type="radio" class="btn-check" name="mode" id="mode-bike">
-                    <label class="btn btn-outline-primary btn-sm" for="mode-bike"><i class="fa-solid fa-motorcycle me-1"></i> Bike</label>
-
-                    <input type="radio" class="btn-check" name="mode" id="mode-truck">
-                    <label class="btn btn-outline-primary btn-sm" for="mode-truck"><i class="fa-solid fa-truck me-1"></i> Truck</label>
+        <form id="route-form" onsubmit="event.preventDefault(); findDynamicRoutes();">
+            <!-- Origin Input -->
+            <div class="mb-3 position-relative">
+                <label class="form-label text-secondary small fw-bold">Origin Location</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fa-solid fa-circle-dot text-success"></i></span>
+                    <input type="text" id="originInput" class="form-control" placeholder="Enter starting village or city..." autocomplete="off" required>
                 </div>
+                <div id="originSuggestions" class="suggestions-box"></div>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100 fw-medium">Calculate Route</button>
+            <!-- Destination Input -->
+            <div class="mb-3 position-relative">
+                <label class="form-label text-secondary small fw-bold">Destination Location</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fa-solid fa-location-pin text-danger"></i></span>
+                    <input type="text" id="destinationInput" class="form-control" placeholder="Enter destination place..." autocomplete="off" required>
+                </div>
+                <div id="destinationSuggestions" class="suggestions-box"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 fw-medium shadow-sm py-2">
+                <i class="fa-solid fa-magnifying-glass-location me-1"></i> Calculate Dynamic Routes
+            </button>
         </form>
 
-        <!-- Route Output Summary Card -->
-        <div id="route-summary" class="mt-4 p-3 bg-dark rounded border border-secondary" style="display: none;">
-            <div class="d-flex justify-content-between mb-2 pb-2 border-bottom border-secondary">
-                <span class="small text-secondary">Route Summary</span>
-                <span class="badge bg-success">Optimal</span>
+        <!-- Dynamic Route Output Summary Card -->
+        <div id="route-summary-card" class="mt-4 p-3 bg-white rounded border shadow-sm" style="display: none;">
+            <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+                <span class="small fw-bold text-muted">Optimal Route Options</span>
+                <span class="badge bg-success">Live OSRM Data</span>
             </div>
-            <div class="row text-center mb-2">
-                <div class="col">
-                    <div class="text-secondary extra-small">DISTANCE</div>
-                    <div class="fw-bold fs-5 text-light" id="dist-val">13.6 km</div>
-                </div>
-                <div class="col">
-                    <div class="text-secondary extra-small">EST. TIME</div>
-                    <div class="fw-bold fs-5 text-light" id="time-val">29 mins</div>
-                </div>
-            </div>
-            <div class="small text-warning">
-                <i class="fa-solid fa-triangle-exclamation me-1"></i> Traffic Delay: +6 mins
-            </div>
+            
+            <!-- Dynamic Route Cards Container -->
+            <div id="routesListContainer" class="mt-3"></div>
         </div>
     </div>
 
     <!-- Map Canvas Panel -->
-    <div class="flex-grow-1">
-        <div id="map"></div>
-    </div>
+    <div id="map"></div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 <script>
-    // Initialize Leaflet Map over Bengaluru coordinates
+    // Initialize Leaflet Map
     const map = L.map('map').setView([12.9716, 77.5946], 12);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Form submit handler to trigger OSRM Routing
-    document.getElementById('route-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Example coordinates: Silk Board -> Majestic
-        const originCoords = L.latLng(12.9172, 77.6228);
-        const destCoords = L.latLng(12.9767, 77.5713);
+    let startMarker = null;
+    let endMarker = null;
+    let routingControl = null;
+    let activeRoutesData = [];
+    let routePolylines = [];
 
-        L.Routing.control({
-            waypoints: [originCoords, destCoords],
-            router: L.Routing.osrmv1({
-                serviceUrl: `https://router.project-osrm.org/route/v1`
-            }),
-            lineOptions: { styles: [{ color: '#0d6efd', weight: 6 }] },
-            show: false
+    // Map Click Handler for quick point selection
+    map.on('click', function(e) {
+        if (!startMarker) {
+            setOriginCoords(e.latlng, "Selected Map Point");
+        } else if (!endMarker) {
+            setDestinationCoords(e.latlng, "Selected Map Point");
+            findDynamicRoutes();
+        }
+    });
+
+    function setOriginCoords(latlng, name) {
+        if (startMarker) map.removeLayer(startMarker);
+        startMarker = L.marker(latlng, { draggable: true }).addTo(map).bindPopup("Origin: " + name).openPopup();
+        document.getElementById('originInput').value = name;
+        startMarker.on('dragend', () => { if (endMarker) findDynamicRoutes(); });
+    }
+
+    function setDestinationCoords(latlng, name) {
+        if (endMarker) map.removeLayer(endMarker);
+        endMarker = L.marker(latlng, { draggable: true }).addTo(map).bindPopup("Destination: " + name).openPopup();
+        document.getElementById('destinationInput').value = name;
+        endMarker.on('dragend', () => { if (startMarker) findDynamicRoutes(); });
+    }
+
+    // Nominatim Geocoding Autocomplete with expanded limit and Fix 1, 2, 3 applied
+    async function searchPlaces(query, dropdownId) {
+        if (query.length < 2) return;
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8`);
+            const data = await res.json();
+            const box = document.getElementById(dropdownId);
+            box.innerHTML = '';
+            if (data.length === 0) { box.style.display = 'none'; return; }
+
+            data.forEach(place => {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.innerText = place.display_name;
+                item.onclick = () => {
+                    document.getElementById(dropdownId.replace('Suggestions', 'Input')).value = place.display_name;
+                    box.innerHTML = "";
+                    box.style.display = 'none';
+
+                    const latlng = L.latLng(parseFloat(place.lat), parseFloat(place.lon));
+                    if (dropdownId.includes('origin')) {
+                        setOriginCoords(latlng, place.display_name);
+                    } else {
+                        setDestinationCoords(latlng, place.display_name);
+                        if (startMarker) findDynamicRoutes();
+                    }
+                };
+                box.appendChild(item);
+            });
+            box.style.display = 'block';
+
+            // Fix 3: Close suggestions box when clicking outside
+            document.addEventListener("click", function(e) {
+                const inputElement = document.getElementById(dropdownId.replace("Suggestions", "Input"));
+                if (!box.contains(e.target) && e.target !== inputElement) {
+                    box.style.display = "none";
+                }
+            });
+        } catch (e) { console.error("Geocode error:", e); }
+    }
+
+    // Fix 1: Separate input event listeners and add focus listeners to re-trigger suggestions
+    const originInput = document.getElementById('originInput');
+    const destinationInput = document.getElementById('destinationInput');
+
+    originInput.addEventListener('input', (e) => {
+        searchPlaces(e.target.value, 'originSuggestions');
+    });
+
+    destinationInput.addEventListener('input', (e) => {
+        searchPlaces(e.target.value, 'destinationSuggestions');
+    });
+
+    originInput.addEventListener('focus', () => {
+        if (originInput.value.trim().length >= 2) {
+            searchPlaces(originInput.value.trim(), 'originSuggestions');
+        }
+    });
+
+    destinationInput.addEventListener('focus', () => {
+        if (destinationInput.value.trim().length >= 2) {
+            searchPlaces(destinationInput.value.trim(), 'destinationSuggestions');
+        }
+    });
+
+    // Format duration helper
+    function formatTime(seconds) {
+        const mins = Math.round(seconds / 60);
+        const hrs = Math.floor(mins / 60);
+        const remMins = mins % 60;
+        return hrs > 0 ? `${hrs} hr ${remMins} mins` : `${mins} mins`;
+    }
+
+    // Execute OSRM Dynamic Calculation
+    async function findDynamicRoutes() {
+        const originVal = originInput.value;
+        const destVal = destinationInput.value;
+        if (!originVal || !destVal) return;
+
+        let startCoord = startMarker ? startMarker.getLatLng() : null;
+        let endCoord = endMarker ? endMarker.getLatLng() : null;
+
+        if (!startCoord) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(originVal)}&limit=1`);
+            const data = await res.json();
+            if (data.length > 0) {
+                startCoord = L.latLng(data[0].lat, data[0].lon);
+                setOriginCoords(startCoord, originVal);
+            }
+        }
+
+        if (!endCoord) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destVal)}&limit=1`);
+            const data = await res.json();
+            if (data.length > 0) {
+                endCoord = L.latLng(data[0].lat, data[0].lon);
+                setDestinationCoords(endCoord, destVal);
+            }
+        }
+
+        if (!startCoord || !endCoord) {
+            alert("Could not resolve coordinates for given locations.");
+            return;
+        }
+
+        if (routingControl) map.removeControl(routingControl);
+
+        routingControl = L.Routing.control({
+            waypoints: [startCoord, endCoord],
+            routeWhileDragging: false,
+            showAlternatives: true,
+            router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1', profile: 'driving' }),
+            createMarker: () => null
         }).addTo(map);
 
-        document.getElementById('route-summary').style.display = 'block';
-    });
+        routingControl.on('routesfound', function(e) {
+            activeRoutesData = e.routes;
+            renderRouteCards(activeRoutesData);
+            highlightRouteOnMap(0);
+            document.getElementById('route-summary-card').style.display = 'block';
+        });
+    }
+
+    function renderRouteCards(routes) {
+        const container = document.getElementById('routesListContainer');
+        container.innerHTML = '';
+
+        routes.forEach((route, idx) => {
+            const distKm = (route.summary.totalDistance / 1000).toFixed(2);
+            const timeStr = formatTime(route.summary.totalTime);
+            const isFastest = idx === 0;
+
+            const card = document.createElement('div');
+            card.className = `route-card ${idx === 0 ? 'active' : ''}`;
+            card.id = `route-card-${idx}`;
+            card.onclick = () => {
+                document.querySelectorAll('.route-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                highlightRouteOnMap(idx);
+            };
+
+            card.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center fw-bold text-dark">
+                    <span>Route Option ${idx + 1} ${isFastest ? '<span class="badge bg-success text-white" style="font-size:10px;">Fastest</span>' : ''}</span>
+                    <span class="text-primary">${timeStr}</span>
+                </div>
+                <div class="small text-secondary mt-1">
+                    <b>Distance:</b> ${distKm} km | <b>Est. Delay:</b> +${Math.round(route.summary.totalTime * 0.15 / 60)} mins
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function highlightRouteOnMap(selectedIndex) {
+        routePolylines.forEach(l => map.removeLayer(l));
+        routePolylines = [];
+
+        const colors = ['#2563eb', '#16a34a', '#d97706'];
+
+        activeRoutesData.forEach((route, idx) => {
+            const isSelected = idx === selectedIndex;
+            const polyline = L.polyline(route.coordinates, {
+                color: isSelected ? colors[idx % colors.length] : '#94a3b8',
+                weight: isSelected ? 7 : 4,
+                opacity: isSelected ? 0.9 : 0.4
+            }).addTo(map);
+
+            polyline.on('click', () => {
+                document.querySelectorAll('.route-card').forEach(c => c.classList.remove('active'));
+                document.getElementById(`route-card-${idx}`).classList.add('active');
+                highlightRouteOnMap(idx);
+            });
+
+            routePolylines.push(polyline);
+        });
+
+        if (routePolylines[selectedIndex]) {
+            map.fitBounds(routePolylines[selectedIndex].getBounds(), { padding: [40, 40] });
+        }
+    }
 </script>
 {% endblock %}

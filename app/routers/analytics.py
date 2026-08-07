@@ -15,6 +15,13 @@ from app.models import Alert
 from app.database import get_db
 
 # ==========================================================
+# ROUTER SETUP
+# ==========================================================
+
+router = APIRouter(prefix="/analytics", tags=["Analytics & Heatmap"])
+
+
+# ==========================================================
 # SAFE CONGESTION CALCULATOR
 # ==========================================================
 
@@ -47,9 +54,6 @@ def calculate_congestion(vehicle_count: int, emergency_count: int = 0) -> dict:
         "signal_time": signal_time,
         "recommendation": recommendation
     }
-
-
-router = APIRouter(prefix="/analytics", tags=["Analytics & Heatmap"])
 
 
 # ==========================================================
@@ -255,4 +259,75 @@ def get_traffic_trends(
         "daily_labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
         "daily_totals": [12400, 13100, 14250, 13800, 15600, 9800, 7500],
         "db_records": db_records
+    }
+
+
+# ==========================================================
+# ANALYTICS FRONTEND API EXTENSIONS
+# ==========================================================
+
+@router.get("/api/analytics/summary")
+def analytics_summary():
+    return {
+        "total_vehicles": 81,
+        "congestion": 65,
+        "alerts_today": 4,
+        "avg_speed": 38,
+        "peak_hours": "08:00 - 10:00 and 17:00 - 19:00"
+    }
+
+
+@router.get("/api/analytics/hourly")
+def analytics_hourly():
+    return {
+        "hours": [
+            "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", 
+            "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", 
+            "18:00", "19:00"
+        ],
+        "vehicles": [
+            20, 35, 60, 82, 70, 55, 48, 52, 58, 65, 72, 88, 95, 80
+        ],
+        "congestion": [
+            10, 20, 45, 70, 55, 40, 35, 38, 42, 48, 55, 72, 80, 65
+        ]
+    }
+
+
+@router.get("/api/analytics/vehicle-distribution")
+def vehicle_distribution():
+    return {
+        "labels": ["Cars", "Bikes", "Buses", "Trucks"],
+        "values": [42, 25, 8, 6]
+    }
+
+
+class RouteRequest(BaseModel):
+    road: str
+    traffic_score: float
+
+
+@router.post("/api/analytics/route-recommendation")
+def route_recommendation(request: RouteRequest):
+    score = request.traffic_score
+
+    if score >= 80:
+        level = "High Congestion"
+        recommendation = "Avoid this road during peak hours."
+        suggested_route = "Use an alternate route."
+    elif score >= 50:
+        level = "Moderate Congestion"
+        recommendation = "Travel with caution."
+        suggested_route = "Alternate route recommended."
+    else:
+        level = "Low Congestion"
+        recommendation = "Road is suitable for travel."
+        suggested_route = "Continue on this route."
+
+    return {
+        "road": request.road,
+        "traffic_score": score,
+        "traffic_level": level,
+        "recommendation": recommendation,
+        "suggested_route": suggested_route
     }

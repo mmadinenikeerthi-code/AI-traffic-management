@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 Global Traffic Hotspots | Worldwide Traffic Intelligence</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --orange: #f97316;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 16px;
+        }
+
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-width: 1920px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Top 6 KPI Cards */
+        header.kpi-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .kpi-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .kpi-title {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .kpi-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* Toolbar & Search */
+        .toolbar {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .search-group {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            min-width: 300px;
+            position: relative;
+        }
+
+        .search-group input {
+            flex: 1;
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+
+        .search-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        #searchResultsBox {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 80px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 4px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        .search-result-item {
+            padding: 10px 14px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .search-result-item:hover {
+            background-color: var(--bg-card-hover);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        button, select {
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        button:hover, select:hover {
+            background-color: var(--bg-card-hover);
+            border-color: var(--accent-blue);
+        }
+
+        button.active {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        /* Main Content Layout (Map + Right Sidebars) */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 340px 340px;
+            gap: 16px;
+            height: 560px;
+        }
+
+        @media (max-width: 1400px) {
+            .main-content {
+                grid-template-columns: 1fr 320px;
+                height: auto;
+            }
+            #map { height: 450px; }
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            z-index: 1;
+        }
+
+        .sidebar-panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            max-height: 560px;
+        }
+
+        .sidebar-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        .hotspot-list-item {
+            background-color: var(--bg-main);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .hotspot-list-item:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .hotspot-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+        }
+
+        /* AI Recommendation Cards */
+        .rec-card {
+            background-color: var(--bg-main);
+            border-left: 4px solid var(--danger);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.85rem;
+        }
+
+        .rec-card.warning { border-left-color: var(--warning); }
+        .rec-card.orange { border-left-color: var(--orange); }
+        .rec-card.success { border-left-color: var(--success); }
+
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        .badge.severe { background-color: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .badge.high { background-color: rgba(249, 115, 22, 0.2); color: var(--orange); }
+        .badge.moderate { background-color: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .badge.low { background-color: rgba(16, 185, 129, 0.2); color: var(--success); }
+
+        /* Bottom Section Panels */
+        .bottom-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 280px;
+        }
+
+        .panel-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .stat-item {
+            background-color: var(--bg-main);
+            padding: 8px 10px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); }
+        .stat-val { font-size: 1.05rem; font-weight: 700; }
+
+        .ranking-list, .alert-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            max-height: 190px;
+        }
+
+        .ranking-row, .alert-item {
+            background-color: var(--bg-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .alert-item {
+            justify-content: flex-start;
+            gap: 8px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .chart-container {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            height: 180px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 12px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+
+    <!-- Top 6 KPI Cards -->
+    <header class="kpi-container">
+        <div class="kpi-card">
+            <span class="kpi-title">🌍 Countries Monitored</span>
+            <span class="kpi-value" id="kpi-countries">120</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">🚗 Live Vehicles</span>
+            <span class="kpi-value" id="kpi-vehicles">25,340</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">🚦 Congested Cities</span>
+            <span class="kpi-value orange" id="kpi-cities">48</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">🚨 Active Incidents</span>
+            <span class="kpi-value red" id="kpi-incidents">14</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">⚡ AI Predictions</span>
+            <span class="kpi-value green" id="kpi-predictions">39</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">🕒 Last Updated</span>
+            <span class="kpi-value" id="kpi-updated" style="font-size: 1.1rem;">2 sec ago</span>
+        </div>
+    </header>
+
+    <!-- Search Toolbar & Filters -->
+    <section class="toolbar">
+        <div class="search-group">
+            <input type="text" id="searchInput" placeholder="Search Country, City, Road, Highway, Airport, Port, Metro..." oninput="handleLiveAutocomplete()" onkeypress="if(event.key==='Enter') handleWorldSearch()">
+            <div id="searchResultsBox"></div>
+            <button onclick="handleWorldSearch()">Search</button>
+        </div>
+        <div class="action-buttons">
+            <button id="btn-refresh" onclick="triggerRefresh()">🔄 Refresh</button>
+            <button id="btn-heatmap" class="active" onclick="toggleHeatmap()">🔥 Heatmap</button>
+            <button id="btn-marker" class="active" onclick="toggleMarkers()">📍 Markers</button>
+            <select id="countryFilter" onchange="applyFilters()">
+                <option value="all">All Countries</option>
+                <option value="USA">USA</option>
+                <option value="India">India</option>
+                <option value="Japan">Japan</option>
+                <option value="UK">UK</option>
+                <option value="France">France</option>
+            </select>
+            <select id="congestionFilter" onchange="applyFilters()">
+                <option value="all">All Traffic Levels</option>
+                <option value="Severe">Severe</option>
+                <option value="High">High</option>
+                <option value="Moderate">Moderate</option>
+                <option value="Low">Low</option>
+            </select>
+            <select id="layerSelector" onchange="changeMapLayer(this.value)">
+                <option value="street">Street View</option>
+                <option value="satellite">Satellite</option>
+                <option value="terrain">Terrain</option>
+            </select>
+        </div>
+    </section>
+
+    <!-- Main Map & Right Sidebars -->
+    <section class="main-content">
+        <div id="map"></div>
+
+        <!-- Sidebar 1: Top Traffic Hotspots -->
+        <aside class="sidebar-panel">
+            <div class="sidebar-title">🌍 Top Traffic Hotspots</div>
+            <div id="topHotspotsContainer"></div>
+        </aside>
+
+        <!-- Sidebar 2: AI Recommendations -->
+        <aside class="sidebar-panel">
+            <div class="sidebar-title">🤖 AI Recommendations</div>
+            <div id="aiRecommendationsContainer"></div>
+        </aside>
+    </section>
+
+    <!-- Bottom Section Panels -->
+    <section class="bottom-section">
+        <!-- Panel 1: Live Statistics -->
+        <div class="panel">
+            <div class="panel-title">📊 Live YOLOv8 Fleet Breakdown</div>
+            <div class="stat-grid">
+                <div class="stat-item"><span class="stat-label">Cars</span><span class="stat-val" id="stat-cars">14,210</span></div>
+                <div class="stat-item"><span class="stat-label">Bikes</span><span class="stat-val" id="stat-bikes">5,120</span></div>
+                <div class="stat-item"><span class="stat-label">Buses</span><span class="stat-val" id="stat-buses">1,840</span></div>
+                <div class="stat-item"><span class="stat-label">Trucks</span><span class="stat-val" id="stat-trucks">3,450</span></div>
+                <div class="stat-item"><span class="stat-label">Emergency</span><span class="stat-val" style="color:var(--danger)" id="stat-emergency">120</span></div>
+                <div class="stat-item"><span class="stat-label">Avg Speed</span><span class="stat-val" id="stat-speed">42 km/h</span></div>
+            </div>
+        </div>
+
+        <!-- Panel 2: Country Ranking -->
+        <div class="panel">
+            <div class="panel-title">🌐 Global Country Speed Ranking</div>
+            <div class="ranking-list" id="countryRankingList">
+                <div class="ranking-row"><span>🇺🇸 USA</span><strong>48 km/h</strong></div>
+                <div class="ranking-row"><span>🇯🇵 Japan</span><strong>55 km/h</strong></div>
+                <div class="ranking-row"><span>🇬🇧 UK</span><strong>41 km/h</strong></div>
+                <div class="ranking-row"><span>🇮🇳 India</span><strong>38 km/h</strong></div>
+                <div class="ranking-row"><span>🇫🇷 France</span><strong>44 km/h</strong></div>
+            </div>
+        </div>
+
+        <!-- Panel 3: City Ranking -->
+        <div class="panel">
+            <div class="panel-title">🏙️ Major City Congestion Index</div>
+            <div class="ranking-list" id="cityRankingList">
+                <div class="ranking-row"><span>New York (USA)</span><strong style="color:var(--danger)">Severe</strong></div>
+                <div class="ranking-row"><span>London (UK)</span><strong style="color:var(--warning)">Moderate</strong></div>
+                <div class="ranking-row"><span>Tokyo (Japan)</span><strong style="color:var(--success)">Low</strong></div>
+                <div class="ranking-row"><span>Sydney (Australia)</span><strong style="color:var(--success)">Low</strong></div>
+                <div class="ranking-row"><span>Mumbai (India)</span><strong style="color:var(--danger)">Severe</strong></div>
+            </div>
+        </div>
+
+        <!-- Panel 4: Live Incidents & Alerts -->
+        <div class="panel">
+            <div class="panel-title">🚨 Live Incident Feed</div>
+            <div class="alert-list" id="alertList">
+                <div class="alert-item">🔴 <strong>Heavy Traffic</strong> • New York (3 min ago)</div>
+                <div class="alert-item">🚧 <strong>Road Closed</strong> • Berlin (8 min ago)</div>
+                <div class="alert-item">🚑 <strong>Accident</strong> • Paris Dispatch (12 min ago)</div>
+                <div class="alert-item">🌊 <strong>Flood Warning</strong> • Mumbai Coastal (15 min ago)</div>
+            </div>
+        </div>
+
+        <!-- Panel 5: Analytics Chart 1 -->
+        <div class="panel">
+            <div class="panel-title">📈 Vehicle Volume Trend</div>
+            <div class="chart-container"><canvas id="vehicleTrendChart"></canvas></div>
+        </div>
+
+        <!-- Panel 6: Analytics Chart 2 -->
+        <div class="panel">
+            <div class="panel-title">🚗 Vehicle Fleet Distribution</div>
+            <div class="chart-container"><canvas id="fleetDistChart"></canvas></div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <span>Global Traffic Intelligence System</span> • 
+        <span>Leaflet.js</span> • 
+        <span>OpenStreetMap</span> • 
+        <span>YOLOv8 AI</span> • 
+        <span>FastAPI</span>
+    </footer>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet Heat Plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+
+<script>
+    let hotspotsData = [];
+    let map, markersLayer, heatLayerGroup, tileLayer;
+    let showHeatmapFlag = true;
+    let showMarkersFlag = true;
+
+    // Initialize Leaflet World Map
+    function initMap() {
+        map = L.map('map').setView([20.0, 0.0], 2); // World View default zoom
+
+        tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        markersLayer = L.layerGroup().addTo(map);
+        fetchHotspotsData();
+    }
+
+    // Fetch data from FastAPI backend endpoint `/hotspots/world`
+    function fetchHotspotsData() {
+        fetch('/hotspots/world')
+            .then(res => res.json())
+            .then(data => {
+                hotspotsData = data;
+                renderMapMarkers(hotspotsData);
+                renderTopHotspots(hotspotsData);
+                renderAIRecommendations(hotspotsData);
+            })
+            .catch(err => {
+                console.warn("Backend API offline, loading built-in global telemetry mock set.");
+                hotspotsData = getMockGlobalData();
+                renderMapMarkers(hotspotsData);
+                renderTopHotspots(hotspotsData);
+                renderAIRecommendations(hotspotsData);
+            });
+    }
+
+    function getMockGlobalData() {
+        return [
+            { id: 1, country: "USA", city: "New York", road: "Times Square", lat: 40.7580, lng: -73.9855, congestion: "Severe", vehicles: 480, speed: "12 km/h", action: "Increase green signal by 30 sec" },
+            { id: 2, country: "Japan", city: "Tokyo", road: "Shibuya Crossing", lat: 35.6595, lng: 139.7004, congestion: "High", vehicles: 390, speed: "18 km/h", action: "Reroute pedestrian overflow" },
+            { id: 3, country: "India", city: "Bengaluru", road: "MG Road", lat: 12.9750, lng: 77.6050, congestion: "High", vehicles: 214, speed: "18 km/h", action: "Increase green signal by 30 sec" },
+            { id: 4, country: "UK", city: "London", road: "Oxford Circus", lat: 51.5150, lng: -0.1410, congestion: "Moderate", vehicles: 180, speed: "25 km/h", action: "Maintain dynamic light phasing" },
+            { id: 5, country: "France", city: "Paris", road: "Champs-Élysées", lat: 48.8698, lng: 2.3075, congestion: "Severe", vehicles: 310, speed: "14 km/h", action: "Dispatch traffic unit patrol" },
+            { id: 6, country: "Germany", city: "Berlin", road: "Alexanderplatz", lat: 52.5219, lng: 13.4132, congestion: "High", vehicles: 260, speed: "20 km/h", action: "Use Alternate Route signage" }
+        ];
+    }
+
+    function getStatusColor(congestion) {
+        if (congestion === 'Severe') return '#ef4444';
+        if (congestion === 'High') return '#f97316';
+        if (congestion === 'Moderate') return '#f59e0b';
+        return '#10b981';
+    }
+
+    // Render Markers & Heatmap
+    function renderMapMarkers(data) {
+        markersLayer.clearLayers();
+        let heatPoints = [];
+
+        data.forEach(item => {
+            let intensity = item.congestion === 'Severe' ? 1.0 : item.congestion === 'High' ? 0.8 : item.congestion === 'Moderate' ? 0.5 : 0.2;
+            heatPoints.push([item.lat, item.lng, intensity]);
+
+            if (showMarkersFlag) {
+                let colorHex = getStatusColor(item.congestion);
+                let customIcon = L.divIcon({
+                    className: 'custom-pin',
+                    html: `<div style="background-color: ${colorHex}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 8px ${colorHex};"></div>`,
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                });
+
+                let marker = L.marker([item.lat, item.lng], { icon: customIcon });
+                marker.bindPopup(`
+                    <div style="color:#0f172a; font-family:sans-serif; font-size:0.9rem;">
+                        <strong>${item.road}</strong><br>
+                        City: ${item.city}, ${item.country}<br>
+                        Vehicles: <strong>${item.vehicles}</strong><br>
+                        Speed: <strong>${item.speed}</strong><br>
+                        Congestion: <span style="color:${colorHex}; font-weight:bold;">${item.congestion}</span><br>
+                        <em>AI: ${item.action}</em>
+                    </div>
+                `);
+                markersLayer.addLayer(marker);
+            }
+        });
+
+        if (heatLayerGroup) map.removeLayer(heatLayerGroup);
+        heatLayerGroup = L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 17 });
+        if (showHeatmapFlag) heatLayerGroup.addTo(map);
+    }
+
+    // Render Top Traffic Hotspots Sidebar
+    function renderTopHotspots(data) {
+        const container = document.getElementById('topHotspotsContainer');
+        container.innerHTML = '';
+        data.slice(0, 6).forEach((item, index) => {
+            let badgeClass = item.congestion === 'Severe' ? 'severe' : item.congestion === 'High' ? 'high' : 'moderate';
+            let div = document.createElement('div');
+            div.className = 'hotspot-list-item';
+            div.onclick = () => { map.setView([item.lat, item.lng], 14); };
+            div.innerHTML = `
+                <div class="hotspot-header">
+                    <span>${index + 1}. ${item.road}</span>
+                    <span class="badge ${badgeClass}">${item.congestion}</span>
+                </div>
+                <div style="color:var(--text-muted);">${item.city}, ${item.country} • ${item.vehicles} vehicles</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // Render AI Recommendations Sidebar
+    function renderAIRecommendations(data) {
+        const container = document.getElementById('aiRecommendationsContainer');
+        container.innerHTML = '';
+        data.slice(0, 5).forEach(item => {
+            let cardClass = item.congestion === 'Severe' ? '' : item.congestion === 'High' ? 'orange' : 'warning';
+            let div = document.createElement('div');
+            div.className = `rec-card ${cardClass}`;
+            div.innerHTML = `
+                <div style="font-weight:700;">📍 ${item.road}, ${item.city}</div>
+                <div>Action: <strong>${item.action}</strong></div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">Confidence: 94% • Status: ${item.congestion}</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // Filters implementation
+    function applyFilters() {
+        let country = document.getElementById('countryFilter').value;
+        let congestion = document.getElementById('congestionFilter').value;
+
+        let filtered = hotspotsData.filter(item => {
+            let matchCountry = (country === 'all' || item.country === country);
+            let matchCongestion = (congestion === 'all' || item.congestion === congestion);
+            return matchCountry && matchCongestion;
+        });
+
+        renderMapMarkers(filtered);
+    }
+
+    // World Search with Nominatim
+    function handleWorldSearch() {
+        let query = document.getElementById('searchInput').value.trim();
+        if (!query) return;
+        document.getElementById('searchResultsBox').style.display = 'none';
+
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+            .then(res => res.json())
+            .then(resData => {
+                if (resData && resData.length > 0) {
+                    let lat = parseFloat(resData[0].lat);
+                    let lon = parseFloat(resData[0].lon);
+                    map.setView([lat, lon], 13);
+                } else {
+                    alert("Location not found in global directory.");
+                }
+            });
+    }
+
+    // Live Autocomplete
+    let timeout = null;
+    function handleLiveAutocomplete() {
+        let query = document.getElementById('searchInput').value.trim();
+        let box = document.getElementById('searchResultsBox');
+        if (query.length < 2) { box.style.display = 'none'; return; }
+
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+                .then(res => res.json())
+                .then(data => {
+                    box.innerHTML = '';
+                    if (data && data.length > 0) {
+                        box.style.display = 'block';
+                        data.forEach(item => {
+                            let div = document.createElement('div');
+                            div.className = 'search-result-item';
+                            div.innerText = item.display_name;
+                            div.onclick = () => {
+                                document.getElementById('searchInput').value = item.display_name;
+                                box.style.display = 'none';
+                                map.setView([parseFloat(item.lat), parseFloat(item.lon)], 13);
+                            };
+                            box.appendChild(div);
+                        });
+                    } else { box.style.display = 'none'; }
+                });
+        }, 300);
+    }
+
+    function toggleHeatmap() {
+        showHeatmapFlag = !showHeatmapFlag;
+        let btn = document.getElementById('btn-heatmap');
+        if (showHeatmapFlag) { btn.classList.add('active'); heatLayerGroup.addTo(map); }
+        else { btn.classList.remove('active'); map.removeLayer(heatLayerGroup); }
+    }
+
+    function toggleMarkers() {
+        showMarkersFlag = !showMarkersFlag;
+        let btn = document.getElementById('btn-marker');
+        if (showMarkersFlag) btn.classList.add('active'); else btn.classList.remove('active');
+        renderMapMarkers(hotspotsData);
+    }
+
+    function changeMapLayer(layerType) {
+        // Tile layer switcher setup simulation
+        if (layerType === 'satellite') {
+            tileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+        } else if (layerType === 'terrain') {
+            tileLayer.setUrl('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png');
+        } else {
+            tileLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+        }
+    }
+
+    function triggerRefresh() {
+        let btn = document.getElementById('btn-refresh');
+        btn.innerText = '⏳ Syncing...';
+        setTimeout(() => {
+            btn.innerText = '🔄 Refresh';
+            document.getElementById('kpi-updated').innerText = 'Just now';
+            fetchHotspotsData();
+        }, 600);
+    }
+
+    // Initialize Chart.js analytics graphs
+    function initCharts() {
+        const ctx1 = document.getElementById('vehicleTrendChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                datasets: [{ label: 'Global Fleet Count', data: [12000, 9500, 24000, 28000, 31000, 25340], borderColor: '#3b82f6', tension: 0.4, fill: true, backgroundColor: 'rgba(59,130,246,0.1)' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        const ctx2 = document.getElementById('fleetDistChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['Cars', 'Bikes', 'Buses', 'Trucks', 'Emergency'],
+                datasets: [{ data: [14210, 5120, 1840, 3450, 120], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#f97316', '#ef4444'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, color: '#94a3b8' } } } }
+        });
+    }
+
+    window.onload = function() {
+        initMap();
+        initCharts();
+    };
+</script>
+
+</body>
+</html>

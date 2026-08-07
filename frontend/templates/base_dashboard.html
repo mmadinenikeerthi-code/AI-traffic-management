@@ -1,100 +1,397 @@
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark">
+
 <head>
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}AI Traffic GIS Dashboard{% endblock %}</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+
+    <title>
+        {% block title %}
+        AI Traffic Management System
+        {% endblock %}
+    </title>
+
+    <!-- Bootstrap CSS -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    >
+
+    <!-- Your Main CSS -->
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css"
+    >
+
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-dark text-light">
 
-    <div class="d-flex min-vh-100">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar-wrapper bg-body-tertiary border-end border-secondary-subtle">
-            <div class="p-3 border-bottom border-secondary-subtle d-flex align-items-center gap-2">
-                <i class="fa-solid fa-route text-primary fs-4 me-2"></i>
-                <div>
-                    <h6 class="m-0 fw-bold tracking-wide">AI TRAFFIC GIS</h6>
-                    <small class="text-secondary" style="font-size: 11px;">Management System</small>
-                </div>
-            </div>
+<body>
 
-            <ul class="nav nav-pills flex-column p-3 gap-1">
-                <!-- Collapsible Dashboard -->
-                <li class="nav-item">
-                    <a class="nav-link text-light d-flex justify-content-between align-items-center {% if active_page == 'dashboard' %}active{% endif %}" 
-                       data-bs-toggle="collapse" href="#dashboardSubmenu" role="button">
-                        <span><i class="fa-solid fa-gauge me-2 text-primary"></i> Dashboard</span>
-                        <i class="fa-solid fa-chevron-down fs-6"></i>
-                    </a>
-                    <div class="collapse {% if active_page == 'dashboard' %}show{% endif %} ms-3 mt-1" id="dashboardSubmenu">
-                        <ul class="nav nav-pills flex-column gap-1 border-start border-secondary ps-2">
-                            <li><a href="/dashboard" class="nav-link py-1 px-2 text-secondary hover-text-white" style="font-size: 13px;">• Overview</a></li>
-                            <li><a href="#" class="nav-link py-1 px-2 text-secondary hover-text-white" style="font-size: 13px;">• Live Statistics</a></li>
-                            <li><a href="#" class="nav-link py-1 px-2 text-secondary hover-text-white" style="font-size: 13px;">• Camera Status</a></li>
-                        </ul>
-                    </div>
-                </li>
+<!-- ==========================================================
+     SIDEBAR
+========================================================== -->
 
-                <li class="nav-item">
-                    <a href="/traffic-gis" class="nav-link text-light {% if active_page == 'gis' %}active{% endif %}">
-                        <i class="fa-solid fa-map-location-dot me-2 text-info"></i> Traffic GIS
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/route-planner" class="nav-link text-light {% if active_page == 'route_planner' %}active{% endif %}">
-                        <i class="fa-solid fa-diamond-turn-right me-2 text-warning"></i> Route Planner
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/hotspots" class="nav-link text-light {% if active_page == 'hotspots' %}active{% endif %}">
-                        <i class="fa-solid fa-fire me-2 text-danger"></i> Pan-India Hotspots
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/analytics" class="nav-link text-light {% if active_page == 'analytics' %}active{% endif %}">
-                        <i class="fa-solid fa-chart-line me-2 text-success"></i> Analytics
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/reports" class="nav-link text-light {% if active_page == 'reports' %}active{% endif %}">
-                        <i class="fa-solid fa-file-invoice me-2 text-secondary"></i> Reports
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/alerts" class="nav-link text-light {% if active_page == 'alerts' %}active{% endif %}">
-                        <i class="fa-solid fa-bell me-2 text-danger"></i> Alerts
-                    </a>
-                </li>
-                <li class="nav-item mt-4 border-top border-secondary-subtle pt-3">
-                    <button id="logoutBtn" onclick="logoutUser()" class="nav-link text-danger w-100 text-start bg-transparent border-0">
-                        <i class="fa-solid fa-right-from-bracket me-2"></i> Logout
-                    </button>
-                </li>
-            </ul>
-        </aside>
+<div class="sidebar">
 
-        <!-- Main Content Area -->
-        <main class="flex-grow-1 overflow-auto">
-            {% block content %}{% endblock %}
-        </main>
+    <!-- Logo -->
+    <div class="logo">
+        <h4>
+            <i class="fas fa-traffic-light me-2"></i>
+            AI Traffic
+        </h4>
+
+        <small class="text-secondary">
+            Traffic Management System
+        </small>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // Universal Auth Check & Logout Helper
-        function logoutUser() {
-            localStorage.removeItem("access_token");
-            document.cookie = "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-            window.location.href = "/login";
+
+    <!-- Navigation -->
+    <ul class="list-unstyled mt-3">
+
+        <!-- ==================================================
+             DASHBOARD
+        =================================================== -->
+
+        <li>
+            <a
+                href="/dashboard"
+                class="{% if active_page == 'dashboard' %}active{% endif %}"
+            >
+                <span>
+                    <i class="fas fa-gauge me-2"></i>
+                    Dashboard
+                </span>
+            </a>
+        </li>
+
+
+        <!-- ==================================================
+             TRAFFIC GIS
+        =================================================== -->
+
+        <li>
+            <a
+                href="/traffic-gis"
+                class="{% if active_page == 'heatmap' %}active{% endif %}"
+            >
+                <span>
+                    <i class="fas fa-map-marked-alt me-2"></i>
+                    Traffic GIS
+                </span>
+            </a>
+        </li>
+
+
+        <!-- ==================================================
+             ALERTS
+        =================================================== -->
+
+        <li>
+            <a
+                href="/alerts"
+                class="{% if active_page == 'alerts' %}active{% endif %}"
+            >
+                <span>
+                    <i class="fas fa-bell me-2"></i>
+                    Alerts
+                </span>
+            </a>
+        </li>
+
+
+        <!-- ==================================================
+             SUPERVISOR + ADMIN
+        =================================================== -->
+
+        <li class="supervisor-only">
+            <a
+                href="/route-planner"
+                class="{% if active_page == 'route-planner' %}active{% endif %}"
+            >
+                <span>
+                    <i class="fas fa-route me-2"></i>
+                    Route Planner
+                </span>
+            </a>
+        </li>
+
+
+        <li class="supervisor-only">
+            <a
+                href="/hotspots"
+                class="{% if active_page == 'hotspots' %}active{% endif %}"
+            >
+                <span>
+                    <i class="fas fa-fire me-2"></i>
+                    Pan India Hotspots
+                </span>
+            </a>
+        </li>
+
+
+        <li class="supervisor-only">
+            <a
+                href="/analytics"
+                class="{% if active_page == 'analytics' %}active{% endif %}"
+            >
+                <span>
+                    <i class="fas fa-chart-line me-2"></i>
+                    Analytics
+                </span>
+            </a>
+        </li>
+
+
+        <li class="supervisor-only">
+            <a
+                href="/reports"
+                class="{% if active_page == 'reports' %}active{% endif %}"
+            >
+                <span>
+                    <i class="fas fa-file-invoice me-2"></i>
+                    Reports
+                </span>
+            </a>
+        </li>
+
+
+        <!-- ==================================================
+             ADMIN ONLY
+        =================================================== -->
+
+        <li class="admin-only">
+            <a
+                href="/users-page"
+                class="{% if active_page == 'users' %}active{% endif %}"
+            >
+                <span>
+                    <i class="fas fa-users-cog me-2"></i>
+                    Users
+                </span>
+            </a>
+        </li>
+
+
+        <li class="admin-only">
+            <a
+                href="/settings-page"
+                class="{% if active_page == 'settings' %}active{% endif %}"
+            >
+                <span>
+                    <i class="fas fa-cogs me-2"></i>
+                    System Settings
+                </span>
+            </a>
+        </li>
+
+
+        <!-- ==================================================
+             LOGOUT
+        =================================================== -->
+
+        <li class="mt-4">
+
+            <a
+                href="/login"
+                class="text-danger fw-semibold"
+                onclick="logoutUser();"
+            >
+                <span>
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Logout
+                </span>
+            </a>
+
+        </li>
+
+    </ul>
+
+</div>
+
+
+<!-- ==========================================================
+     MAIN CONTENT
+========================================================== -->
+
+<div class="main-content">
+
+    <!-- Top Navbar -->
+    <nav class="navbar navbar-dark bg-dark border-bottom border-secondary">
+
+        <div class="container-fluid">
+
+            <div>
+                <span class="fw-semibold">
+                    AI Traffic Management System
+                </span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+
+                <span
+                    id="loggedInUsername"
+                    class="text-secondary small"
+                >
+                    User
+                </span>
+
+                <span
+                    id="loggedInRole"
+                    class="badge bg-primary"
+                >
+                    User
+                </span>
+
+            </div>
+
+        </div>
+
+    </nav>
+
+
+    <!-- ======================================================
+         PAGE CONTENT
+    ======================================================= -->
+
+    <main class="container-fluid py-4 px-4">
+
+        {% block content %}
+        {% endblock %}
+
+    </main>
+
+
+    <!-- Footer -->
+    <footer class="text-center text-secondary py-3">
+
+        <small>
+            © 2026 AI Traffic Management & Congestion Detection System
+        </small>
+
+    </footer>
+
+</div>
+
+
+<!-- ==========================================================
+     BOOTSTRAP JS
+========================================================== -->
+
+<script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+</script>
+
+
+<!-- ==========================================================
+     ROLE CONTROL
+     This must load before page-specific JS
+========================================================== -->
+
+<script src="/static/js/role-control.js"></script>
+
+
+<!-- ==========================================================
+     COMMON SIDEBAR / USER INFORMATION SCRIPT
+========================================================== -->
+
+<script>
+
+function logoutUser() {
+
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    localStorage.removeItem("user");
+
+    window.location.href = "/login";
+}
+
+
+/* ==========================================================
+   DISPLAY LOGGED-IN USER
+========================================================== */
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    try {
+
+        const usernameElement =
+            document.getElementById("loggedInUsername");
+
+        const roleElement =
+            document.getElementById("loggedInRole");
+
+
+        /* Username */
+        const username =
+            localStorage.getItem("username");
+
+        if (username && usernameElement) {
+
+            usernameElement.textContent =
+                username;
+
         }
-    </script>
-    {% block extra_js %}{% endblock %}
+
+
+        /* User object */
+        const storedUser =
+            localStorage.getItem("user");
+
+        if (storedUser && roleElement) {
+
+            try {
+
+                const user =
+                    JSON.parse(storedUser);
+
+                if (user.role) {
+
+                    roleElement.textContent =
+                        user.role;
+
+                }
+
+            } catch (error) {
+
+                console.log(
+                    "Could not read stored user:",
+                    error
+                );
+
+            }
+
+        }
+
+    } catch (error) {
+
+        console.log(
+            "User information error:",
+            error
+        );
+
+    }
+
+});
+
+</script>
+
+
+<!-- ==========================================================
+     PAGE-SPECIFIC JAVASCRIPT
+========================================================== -->
+
+{% block extra_js %}
+{% endblock %}
+
 </body>
 </html>

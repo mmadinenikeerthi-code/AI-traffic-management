@@ -1,662 +1,3018 @@
 {% extends "base_dashboard.html" %}
 
-{% block title %}Dashboard | AI Traffic Management System{% endblock %}
-
-{% block extra_css %}
-<!-- Font Awesome Icons -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% block title %}
+Dashboard | AI Traffic Management System
 {% endblock %}
 
+
+{% block extra_css %}
+
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<style>
+
+    /* ==========================================================
+       GENERAL DASHBOARD
+       ========================================================== */
+
+    .kpi-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    }
+
+    .vehicle-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .vehicle-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+    }
+
+
+    /* ==========================================================
+       CHARTS
+       ========================================================== */
+
+    #trafficChart {
+        width: 100% !important;
+        height: 280px !important;
+    }
+
+    #vehicleChart {
+        width: 100% !important;
+        height: 260px !important;
+    }
+
+
+    /* ==========================================================
+       VIDEO UPLOAD
+       ========================================================== */
+
+    .upload-status {
+        min-height: 24px;
+    }
+
+    .upload-progress {
+        display: none;
+    }
+
+    #uploadedVideoPreview {
+        width: 100%;
+        max-height: 350px;
+        object-fit: contain;
+        background: #111;
+        border-radius: 8px;
+        display: none;
+    }
+
+    .video-preview-container {
+        margin-top: 15px;
+        padding: 10px;
+        background: #111;
+        border-radius: 8px;
+        display: none;
+    }
+
+
+    /* ==========================================================
+       TRAFFIC INCIDENTS
+       ========================================================== */
+
+    .incident-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-left: 4px solid transparent;
+    }
+
+    .incident-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.20);
+    }
+
+    .incident-high {
+        border-left-color: #dc3545;
+    }
+
+    .incident-medium {
+        border-left-color: #ffc107;
+    }
+
+    .incident-low {
+        border-left-color: #198754;
+    }
+
+    .incident-icon {
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+
+    /* ==========================================================
+       HOTSPOTS
+       ========================================================== */
+
+    .hotspot-item {
+        transition: background-color 0.2s ease;
+    }
+
+    .hotspot-item:hover {
+        background-color: rgba(255,255,255,0.05) !important;
+    }
+
+
+    /* ==========================================================
+       SYSTEM HEALTH
+       ========================================================== */
+
+    .health-item {
+        min-height: 130px;
+    }
+
+
+    /* ==========================================================
+       RESPONSIVE
+       ========================================================== */
+
+    @media (max-width: 768px) {
+
+        #trafficChart {
+            height: 240px !important;
+        }
+
+        #vehicleChart {
+            height: 230px !important;
+        }
+
+    }
+
+</style>
+
+{% endblock %}
+
+
+
 {% block content %}
+
 <div class="container-fluid p-4">
 
-    <!-- Step 5: Real-time Banner Alert Notification -->
-    <div id="notification-banner" class="alert alert-warning d-none alert-dismissible fade show mb-4" role="alert"></div>
 
-    <!-- Header Section -->
+    <!-- ======================================================
+         NOTIFICATION
+         ====================================================== -->
+
+    <div
+        id="notification-banner"
+        class="alert alert-warning d-none alert-dismissible fade show mb-4"
+        role="alert"
+    ></div>
+
+
+
+    <!-- ======================================================
+         DASHBOARD HEADER
+         ====================================================== -->
+
     <div class="row mb-4 align-items-center">
+
         <div class="col-md-7">
+
             <h2 class="fw-bold m-0">
-                <i class="fas fa-chart-line text-primary me-2"></i>AI Traffic Dashboard
+
+                <i class="fas fa-chart-line text-primary me-2"></i>
+
+                AI Traffic Dashboard
+
             </h2>
+
             <p class="text-secondary small mb-0">
+
                 AI Powered Traffic Management & Congestion Detection System
+
             </p>
+
         </div>
-        <div class="col-md-5 text-end d-flex justify-content-end align-items-center gap-2 mt-3 mt-md-0">
-            <a href="/reports/download/pdf" class="btn btn-outline-danger btn-sm">
-                <i class="fas fa-file-pdf me-1"></i> PDF
+
+
+        <div
+            class="col-md-5 text-end d-flex justify-content-end
+                   align-items-center gap-2 mt-3 mt-md-0"
+        >
+
+            <!-- CSV -->
+
+            <a
+                href="/reports/export/csv"
+                class="btn btn-outline-success btn-sm admin-only"
+            >
+
+                <i class="fas fa-file-csv me-1"></i>
+
+                CSV
+
             </a>
-            <a href="/reports/download/csv" class="btn btn-outline-success btn-sm">
-                <i class="fas fa-file-csv me-1"></i> CSV
+
+
+            <!-- GIS -->
+
+            <a
+                href="/osm/map"
+                class="btn btn-primary btn-sm"
+            >
+
+                <i class="fas fa-map-marked-alt me-1"></i>
+
+                Traffic GIS
+
             </a>
-            <a href="/traffic-gis" class="btn btn-primary btn-sm">
-                <i class="fas fa-map-marked-alt me-1"></i> Open Traffic GIS Map
-            </a>
-            <button class="btn btn-outline-primary btn-sm" onclick="initializeDashboard()">
-                <i class="fas fa-sync-alt me-1"></i> Refresh
+
+
+            <!-- REFRESH -->
+
+            <button
+                type="button"
+                class="btn btn-outline-primary btn-sm"
+                onclick="initializeDashboard()"
+            >
+
+                <i class="fas fa-sync-alt me-1"></i>
+
+                Refresh
+
             </button>
+
         </div>
+
     </div>
 
-    <!-- Summary KPI Metric Cards -->
+
+
+    <!-- ======================================================
+         KPI CARDS
+         ====================================================== -->
+
     <div class="row mb-4">
+
+
+        <!-- TOTAL VEHICLES -->
+
         <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0 bg-primary text-white">
+
+            <div class="card shadow-sm border-0 bg-primary text-white kpi-card">
+
                 <div class="card-body text-center p-3">
+
                     <i class="fas fa-car fa-2x mb-2"></i>
-                    <h6 class="text-white-50 small">Total Vehicles</h6>
-                    <h3 id="totalVehicles" class="fw-bold m-0">0</h3>
+
+                    <h6 class="text-white-50 small">
+                        Total Vehicles
+                    </h6>
+
+                    <h3
+                        id="totalVehicles"
+                        class="fw-bold m-0"
+                    >
+                        0
+                    </h3>
+
                 </div>
+
             </div>
+
         </div>
 
+
+        <!-- CONGESTION -->
+
         <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0 bg-danger text-white">
+
+            <div class="card shadow-sm border-0 bg-danger text-white kpi-card">
+
                 <div class="card-body text-center p-3">
+
                     <i class="fas fa-road fa-2x mb-2"></i>
-                    <h6 class="text-white-50 small">Congestion</h6>
-                    <h3 id="congestionLevel" class="fw-bold m-0">LOW</h3>
+
+                    <h6 class="text-white-50 small">
+                        Congestion
+                    </h6>
+
+                    <h3
+                        id="congestionLevel"
+                        class="fw-bold m-0"
+                    >
+                        LOW
+                    </h3>
+
                 </div>
+
             </div>
+
         </div>
 
+
+        <!-- ALERTS -->
+
         <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0 bg-warning text-dark">
+
+            <div class="card shadow-sm border-0 bg-warning text-dark kpi-card">
+
                 <div class="card-body text-center p-3">
+
                     <i class="fas fa-bell fa-2x mb-2"></i>
-                    <h6 class="text-dark-50 small">Alerts Today</h6>
-                    <h3 id="kpi-alerts" class="fw-bold m-0">0</h3>
+
+                    <h6 class="small">
+                        Active Alerts
+                    </h6>
+
+                    <h3
+                        id="kpi-active-alerts"
+                        class="fw-bold m-0"
+                    >
+                        0
+                    </h3>
+
                 </div>
+
             </div>
+
         </div>
 
+
+        <!-- SPEED -->
+
         <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0 bg-success text-white">
+
+            <div class="card shadow-sm border-0 bg-success text-white kpi-card">
+
                 <div class="card-body text-center p-3">
+
                     <i class="fas fa-tachometer-alt fa-2x mb-2"></i>
-                    <h6 class="text-white-50 small">Avg Speed</h6>
-                    <h3 id="kpi-speed" class="fw-bold m-0">0 km/h</h3>
+
+                    <h6 class="text-white-50 small">
+                        Average Speed
+                    </h6>
+
+                    <h3
+                        id="speed"
+                        class="fw-bold m-0"
+                    >
+                        0 km/h
+                    </h3>
+
                 </div>
+
             </div>
+
         </div>
 
+
+        <!-- SIGNAL -->
+
         <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0 bg-info text-white">
+
+            <div class="card shadow-sm border-0 bg-info text-white kpi-card">
+
                 <div class="card-body text-center p-3">
+
                     <i class="fas fa-traffic-light fa-2x mb-2"></i>
-                    <h6 class="text-white-50 small">Signal Time</h6>
-                    <h3 id="signalTime" class="fw-bold m-0">30 Sec</h3>
+
+                    <h6 class="text-white-50 small">
+                        Signal Time
+                    </h6>
+
+                    <h3
+                        id="signalTime"
+                        class="fw-bold m-0"
+                    >
+                        30 Sec
+                    </h3>
+
                 </div>
+
             </div>
+
         </div>
+
+
+        <!-- EMERGENCY -->
 
         <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0 bg-secondary text-white">
+
+            <div class="card shadow-sm border-0 bg-secondary text-white kpi-card">
+
                 <div class="card-body text-center p-3">
+
                     <i class="fas fa-ambulance fa-2x text-danger mb-2"></i>
-                    <h6 class="text-white-50 small">Emergency</h6>
-                    <h3 id="ambulanceCount" class="fw-bold m-0">0</h3>
+
+                    <h6 class="text-white-50 small">
+                        Emergency
+                    </h6>
+
+                    <h3
+                        id="ambulanceCount"
+                        class="fw-bold m-0"
+                    >
+                        0
+                    </h3>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
 
-    <!-- Vehicle Distribution Breakdown Cards -->
+
+
+    <!-- ======================================================
+         VEHICLE DISTRIBUTION
+         ====================================================== -->
+
     <div class="row mb-4">
+
+
+        <!-- CARS -->
+
         <div class="col-md-2 mb-3">
-            <div class="card shadow-sm text-center border-secondary-subtle bg-body-tertiary">
+
+            <div
+                class="card shadow-sm text-center
+                       border-secondary-subtle
+                       bg-body-tertiary vehicle-card"
+            >
+
                 <div class="card-body p-3">
+
                     <i class="fas fa-car fa-2x text-primary"></i>
-                    <h6 class="mt-2 text-secondary small">Cars</h6>
-                    <h4 id="cars" class="fw-bold m-0">0</h4>
+
+                    <h6 class="mt-2 text-secondary small">
+                        Cars
+                    </h6>
+
+                    <h4 id="cars" class="fw-bold m-0">
+                        0
+                    </h4>
+
                 </div>
+
             </div>
+
         </div>
 
+
+        <!-- BIKES -->
+
         <div class="col-md-2 mb-3">
-            <div class="card shadow-sm text-center border-secondary-subtle bg-body-tertiary">
+
+            <div
+                class="card shadow-sm text-center
+                       border-secondary-subtle
+                       bg-body-tertiary vehicle-card"
+            >
+
                 <div class="card-body p-3">
+
                     <i class="fas fa-motorcycle fa-2x text-warning"></i>
-                    <h6 class="mt-2 text-secondary small">Bikes</h6>
-                    <h4 id="bikes" class="fw-bold m-0">0</h4>
+
+                    <h6 class="mt-2 text-secondary small">
+                        Bikes
+                    </h6>
+
+                    <h4 id="bikes" class="fw-bold m-0">
+                        0
+                    </h4>
+
                 </div>
+
             </div>
+
         </div>
 
+
+        <!-- BUSES -->
+
         <div class="col-md-2 mb-3">
-            <div class="card shadow-sm text-center border-secondary-subtle bg-body-tertiary">
+
+            <div
+                class="card shadow-sm text-center
+                       border-secondary-subtle
+                       bg-body-tertiary vehicle-card"
+            >
+
                 <div class="card-body p-3">
+
                     <i class="fas fa-bus fa-2x text-success"></i>
-                    <h6 class="mt-2 text-secondary small">Buses</h6>
-                    <h4 id="buses" class="fw-bold m-0">0</h4>
+
+                    <h6 class="mt-2 text-secondary small">
+                        Buses
+                    </h6>
+
+                    <h4 id="buses" class="fw-bold m-0">
+                        0
+                    </h4>
+
                 </div>
+
             </div>
+
         </div>
 
+
+        <!-- TRUCKS -->
+
         <div class="col-md-2 mb-3">
-            <div class="card shadow-sm text-center border-secondary-subtle bg-body-tertiary">
+
+            <div
+                class="card shadow-sm text-center
+                       border-secondary-subtle
+                       bg-body-tertiary vehicle-card"
+            >
+
                 <div class="card-body p-3">
+
                     <i class="fas fa-truck fa-2x text-danger"></i>
-                    <h6 class="mt-2 text-secondary small">Trucks</h6>
-                    <h4 id="trucks" class="fw-bold m-0">0</h4>
+
+                    <h6 class="mt-2 text-secondary small">
+                        Trucks
+                    </h6>
+
+                    <h4 id="trucks" class="fw-bold m-0">
+                        0
+                    </h4>
+
                 </div>
+
             </div>
+
         </div>
 
+
+        <!-- AUTO -->
+
         <div class="col-md-2 mb-3">
-            <div class="card shadow-sm text-center border-secondary-subtle bg-body-tertiary">
+
+            <div
+                class="card shadow-sm text-center
+                       border-secondary-subtle
+                       bg-body-tertiary vehicle-card"
+            >
+
                 <div class="card-body p-3">
+
                     <i class="fas fa-taxi fa-2x text-info"></i>
-                    <h6 class="mt-2 text-secondary small">Auto</h6>
-                    <h4 id="autos" class="fw-bold m-0">0</h4>
+
+                    <h6 class="mt-2 text-secondary small">
+                        Auto
+                    </h6>
+
+                    <h4 id="autos" class="fw-bold m-0">
+                        0
+                    </h4>
+
                 </div>
+
             </div>
+
         </div>
+
+
+        <!-- AMBULANCE -->
 
         <div class="col-md-2 mb-3">
-            <div class="card shadow-sm text-center border-secondary-subtle bg-body-tertiary">
+
+            <div
+                class="card shadow-sm text-center
+                       border-secondary-subtle
+                       bg-body-tertiary vehicle-card"
+            >
+
                 <div class="card-body p-3">
+
                     <i class="fas fa-ambulance fa-2x text-danger"></i>
-                    <h6 class="mt-2 text-secondary small">Ambulance</h6>
-                    <h4 id="ambulances" class="fw-bold m-0">0</h4>
+
+                    <h6 class="mt-2 text-secondary small">
+                        Ambulance
+                    </h6>
+
+                    <h4 id="ambulances" class="fw-bold m-0">
+                        0
+                    </h4>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
 
-    <!-- Traffic Hotspots & Live Traffic Analysis Section -->
+
+
+    <!-- ======================================================
+         TRAFFIC INCIDENTS
+         ====================================================== -->
+
     <div class="row mb-4">
-        <!-- Traffic Hotspots List Panel -->
-        <div class="col-lg-5 mb-3">
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary h-100">
-                <div class="card-header border-secondary-subtle fw-bold d-flex justify-content-between align-items-center py-3">
-                    <span><i class="fas fa-map-marker-alt text-danger me-2"></i> Traffic Hotspots</span>
-                    <a href="/traffic-gis" class="btn btn-sm btn-outline-primary">View Full GIS Map</a>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush" id="hotspotsList">
-                        <a href="/traffic-gis?location=JunctionA" class="list-group-item list-group-item-action bg-transparent text-light border-secondary-subtle d-flex justify-content-between align-items-center p-3">
-                            <div>
-                                <strong class="d-block">📍 Junction A (MG Road)</strong>
-                                <small class="text-secondary">High Density Zone</small>
-                            </div>
-                            <div>
-                                <span class="badge bg-danger rounded-pill me-2">HIGH</span>
-                                <span class="btn btn-sm btn-outline-secondary border"><i class="fas fa-external-link-alt"></i> Map</span>
-                            </div>
-                        </a>
 
-                        <a href="/traffic-gis?location=JunctionB" class="list-group-item list-group-item-action bg-transparent text-light border-secondary-subtle d-flex justify-content-between align-items-center p-3">
-                            <div>
-                                <strong class="d-block">📍 Junction B (Ring Road)</strong>
-                                <small class="text-secondary">Moderate Traffic Flow</small>
-                            </div>
-                            <div>
-                                <span class="badge bg-warning text-dark rounded-pill me-2">MEDIUM</span>
-                                <span class="btn btn-sm btn-outline-secondary border"><i class="fas fa-external-link-alt"></i> Map</span>
-                            </div>
-                        </a>
+        <div class="col-lg-12">
 
-                        <a href="/traffic-gis?location=JunctionC" class="list-group-item list-group-item-action bg-transparent text-light border-secondary-subtle d-flex justify-content-between align-items-center p-3">
-                            <div>
-                                <strong class="d-block">📍 Junction C (Station Road)</strong>
-                                <small class="text-secondary">Clear / Normal Speed</small>
-                            </div>
-                            <div>
-                                <span class="badge bg-success rounded-pill me-2">LOW</span>
-                                <span class="btn btn-sm btn-outline-secondary border"><i class="fas fa-external-link-alt"></i> Map</span>
-                            </div>
-                        </a>
-
-                        <a href="/traffic-gis?location=JunctionD" class="list-group-item list-group-item-action bg-transparent text-light border-secondary-subtle d-flex justify-content-between align-items-center p-3">
-                            <div>
-                                <strong class="d-block">📍 Junction D (Airport Highway)</strong>
-                                <small class="text-secondary">Heavy Congestion Alert</small>
-                            </div>
-                            <div>
-                                <span class="badge bg-danger rounded-pill me-2">HIGH</span>
-                                <span class="btn btn-sm btn-outline-secondary border"><i class="fas fa-external-link-alt"></i> Map</span>
-                            </div>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Hourly Traffic Trend Chart -->
-        <div class="col-lg-7 mb-3">
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary h-100">
-                <div class="card-header border-secondary-subtle fw-bold py-3">
-                    <i class="fas fa-chart-line text-primary me-2"></i> Hourly Vehicle Traffic Volume & Trend
-                </div>
-                <div class="card-body">
-                    <canvas id="trafficChart" style="height: 280px;"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Live Camera Feed, Video Upload & AI Route Engine -->
-    <div class="row mb-4">
-        <!-- Left Column: Camera Feed & Video Upload -->
-        <div class="col-lg-7 mb-3">
             <div class="card shadow-sm border-secondary-subtle bg-body-tertiary">
-                <div class="card-header border-secondary-subtle fw-bold">
-                    <i class="fas fa-video text-danger me-1"></i> Live Camera Feed
+
+                <div
+                    class="card-header border-secondary-subtle
+                           fw-bold d-flex
+                           justify-content-between
+                           align-items-center"
+                >
+
+                    <span>
+
+                        <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+
+                        Traffic Incidents
+
+                    </span>
+
+
+                    <a
+                        href="/incidents"
+                        class="btn btn-sm btn-outline-primary"
+                    >
+
+                        View All
+
+                    </a>
+
                 </div>
+
+
+                <div class="card-body">
+
+                    <div
+                        id="dashboardIncidentContainer"
+                    >
+
+                        <div class="text-center text-secondary py-3">
+
+                            <div
+                                class="spinner-border spinner-border-sm me-2"
+                                role="status"
+                            ></div>
+
+                            Loading incidents...
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- ======================================================
+         HOTSPOTS + TRAFFIC TREND
+         ====================================================== -->
+
+    <div class="row mb-4">
+
+
+        <!-- HOTSPOTS -->
+
+        <div class="col-lg-5 mb-3">
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary h-100"
+            >
+
+                <div
+                    class="card-header
+                           border-secondary-subtle
+                           fw-bold
+                           d-flex
+                           justify-content-between
+                           align-items-center py-3"
+                >
+
+                    <span>
+
+                        <i class="fas fa-map-marker-alt text-danger me-2"></i>
+
+                        Traffic Hotspots
+
+                    </span>
+
+
+                    <a
+                        href="/osm/map"
+                        class="btn btn-sm btn-outline-primary"
+                    >
+
+                        View GIS Map
+
+                    </a>
+
+                </div>
+
+
+                <div class="card-body p-0">
+
+                    <div
+                        class="list-group list-group-flush"
+                        id="hotspotsList"
+                    >
+
+
+                        <a
+                            href="/osm/map?location=JunctionA"
+                            class="list-group-item
+                                   list-group-item-action
+                                   bg-transparent
+                                   text-light
+                                   border-secondary-subtle
+                                   d-flex
+                                   justify-content-between
+                                   align-items-center
+                                   p-3
+                                   hotspot-item"
+                        >
+
+                            <div>
+
+                                <strong class="d-block">
+                                    📍 Junction A (MG Road)
+                                </strong>
+
+                                <small class="text-secondary">
+                                    High Density Zone
+                                </small>
+
+                            </div>
+
+                            <span class="badge bg-danger rounded-pill">
+                                HIGH
+                            </span>
+
+                        </a>
+
+
+                        <a
+                            href="/osm/map?location=JunctionB"
+                            class="list-group-item
+                                   list-group-item-action
+                                   bg-transparent
+                                   text-light
+                                   border-secondary-subtle
+                                   d-flex
+                                   justify-content-between
+                                   align-items-center
+                                   p-3
+                                   hotspot-item"
+                        >
+
+                            <div>
+
+                                <strong class="d-block">
+                                    📍 Junction B (Ring Road)
+                                </strong>
+
+                                <small class="text-secondary">
+                                    Moderate Traffic Flow
+                                </small>
+
+                            </div>
+
+                            <span class="badge bg-warning text-dark rounded-pill">
+                                MEDIUM
+                            </span>
+
+                        </a>
+
+
+                        <a
+                            href="/osm/map?location=JunctionC"
+                            class="list-group-item
+                                   list-group-item-action
+                                   bg-transparent
+                                   text-light
+                                   border-secondary-subtle
+                                   d-flex
+                                   justify-content-between
+                                   align-items-center
+                                   p-3
+                                   hotspot-item"
+                        >
+
+                            <div>
+
+                                <strong class="d-block">
+                                    📍 Junction C (Station Road)
+                                </strong>
+
+                                <small class="text-secondary">
+                                    Clear / Normal Speed
+                                </small>
+
+                            </div>
+
+                            <span class="badge bg-success rounded-pill">
+                                LOW
+                            </span>
+
+                        </a>
+
+
+                        <a
+                            href="/osm/map?location=JunctionD"
+                            class="list-group-item
+                                   list-group-item-action
+                                   bg-transparent
+                                   text-light
+                                   border-secondary-subtle
+                                   d-flex
+                                   justify-content-between
+                                   align-items-center
+                                   p-3
+                                   hotspot-item"
+                        >
+
+                            <div>
+
+                                <strong class="d-block">
+                                    📍 Junction D (Airport Highway)
+                                </strong>
+
+                                <small class="text-secondary">
+                                    Heavy Congestion Alert
+                                </small>
+
+                            </div>
+
+                            <span class="badge bg-danger rounded-pill">
+                                HIGH
+                            </span>
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- TRAFFIC TREND -->
+
+        <div class="col-lg-7 mb-3">
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary h-100"
+            >
+
+                <div
+                    class="card-header
+                           border-secondary-subtle
+                           fw-bold py-3"
+                >
+
+                    <i class="fas fa-chart-line text-primary me-2"></i>
+
+                    Hourly Vehicle Traffic Volume & Trend
+
+                </div>
+
+
+                <div class="card-body">
+
+                    <canvas id="trafficChart"></canvas>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- ======================================================
+         LIVE CAMERA + VIDEO UPLOAD
+         ====================================================== -->
+
+    <div class="row mb-4">
+
+
+        <!-- LEFT -->
+
+        <div class="col-lg-7 mb-3">
+
+
+            <!-- LIVE CAMERA -->
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary"
+            >
+
+                <div
+                    class="card-header
+                           border-secondary-subtle
+                           fw-bold"
+                >
+
+                    <i class="fas fa-video text-danger me-1"></i>
+
+                    Live Camera Feed
+
+                </div>
+
+
                 <div class="card-body text-center">
+
                     <img
                         src="https://placehold.co/900x500?text=Live+Traffic+Camera"
                         id="liveCamera"
                         class="img-fluid rounded shadow-sm"
-                        style="width:100%; height:300px; object-fit:cover;"
-                        alt="Live Camera Feed">
+                        style="
+                            width:100%;
+                            height:300px;
+                            object-fit:cover;
+                        "
+                        alt="Live Traffic Camera"
+                    >
+
                 </div>
+
             </div>
 
-            <!-- Upload Traffic Video Card -->
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary mt-3">
-                <div class="card-header border-secondary-subtle fw-bold">
-                    <i class="fas fa-upload text-primary me-1"></i> Upload Traffic Video for Processing
+
+
+            <!-- VIDEO UPLOAD -->
+
+            <div
+                class="card shadow-sm
+                       border-primary mt-3"
+            >
+
+                <div class="card-header bg-primary text-white fw-bold">
+
+                    <i class="fas fa-upload me-2"></i>
+
+                    Upload Traffic Video
+
                 </div>
+
+
                 <div class="card-body">
+
+
+                    <label
+                        for="videoFile"
+                        class="form-label fw-semibold"
+                    >
+
+                        Select Traffic Video
+
+                    </label>
+
+
                     <input
                         type="file"
                         id="videoFile"
-                        accept="video/*"
-                        class="form-control">
+                        class="form-control"
+                        accept="video/mp4,
+                                video/avi,
+                                video/quicktime,
+                                video/x-matroska,
+                                video/webm"
+                    >
+
+
+                    <div class="form-text text-secondary mb-3">
+
+                        Supported formats:
+                        MP4, AVI, MOV, MKV and WEBM
+
+                    </div>
+
 
                     <button
-                        class="btn btn-primary mt-3 w-100 fw-semibold"
-                        onclick="uploadVideo()">
-                        <i class="fas fa-cloud-upload-alt me-1"></i> Process Video with YOLOv8
+                        type="button"
+                        id="uploadVideoButton"
+                        class="btn btn-primary w-100 fw-semibold"
+                        onclick="uploadVideo()"
+                    >
+
+                        <i class="fas fa-cloud-upload-alt me-1"></i>
+
+                        Upload & Preview Video
+
                     </button>
 
-                    <div id="uploadStatus" class="mt-2 fw-medium"></div>
+
+                    <div
+                        id="uploadStatus"
+                        class="upload-status mt-3"
+                    ></div>
+
+
+                    <div
+                        id="uploadProgress"
+                        class="progress upload-progress mt-2"
+                        style="height:8px;"
+                    >
+
+                        <div
+                            id="uploadProgressBar"
+                            class="progress-bar
+                                   progress-bar-striped
+                                   progress-bar-animated"
+                            role="progressbar"
+                            style="width:0%;"
+                        ></div>
+
+                    </div>
+
+
+                    <!-- VIDEO PREVIEW -->
+
+                    <div
+                        id="uploadedVideoContainer"
+                        class="video-preview-container"
+                    >
+
+                        <div class="text-white fw-semibold mb-2">
+
+                            <i class="fas fa-play-circle me-1"></i>
+
+                            Uploaded Traffic Video
+
+                        </div>
+
+
+                        <video
+                            id="uploadedVideoPreview"
+                            controls
+                            playsinline
+                        >
+
+                            Your browser does not support HTML5 video.
+
+                        </video>
+
+                    </div>
+
                 </div>
+
             </div>
+
         </div>
 
-        <!-- Right Column: AI Recommendation Engine -->
-        <div class="col-lg-5 mb-3">
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary h-100">
+
+
+        <!-- AI RECOMMENDATION -->
+
+        <div class="col-lg-5 mb-3 supervisor-only">
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary h-100"
+            >
+
                 <div class="card-header border-secondary-subtle fw-bold">
-                    <i class="fas fa-brain text-primary me-1"></i> AI Route Recommendation Engine
+
+                    <i class="fas fa-brain text-primary me-1"></i>
+
+                    AI Route Recommendation Engine
+
                 </div>
+
+
                 <div class="card-body">
+
+
                     <div class="input-group mb-3">
-                        <input type="text" id="road-input" class="form-control" value="MG Road" placeholder="Road Name">
-                        <input type="number" id="density-input" class="form-control" value="85" placeholder="Density %">
-                        <button class="btn btn-primary" onclick="fetchAIRecommendation()">
-                            <i class="fas fa-bolt me-1"></i> Run Analysis
+
+                        <input
+                            type="text"
+                            id="road-input"
+                            class="form-control"
+                            value="MG Road"
+                            placeholder="Road Name"
+                        >
+
+
+                        <input
+                            type="number"
+                            id="density-input"
+                            class="form-control"
+                            value="85"
+                            min="0"
+                            max="100"
+                            placeholder="Density %"
+                        >
+
+
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            onclick="fetchAIRecommendation()"
+                        >
+
+                            <i class="fas fa-bolt me-1"></i>
+
+                            Run Analysis
+
                         </button>
+
                     </div>
 
-                    <div id="recommendation" class="alert alert-info py-2">
+
+                    <div
+                        id="recommendation"
+                        class="alert alert-info py-2"
+                    >
+
                         Waiting for AI Optimization Query...
+
                     </div>
 
-                    <div id="ai-recommendation-output" class="p-3 border border-secondary rounded bg-dark mb-3 d-none"></div>
 
-                    <table class="table table-bordered border-secondary mb-0">
+                    <div
+                        id="ai-recommendation-output"
+                        class="p-3
+                               border
+                               border-secondary
+                               rounded
+                               bg-dark
+                               mb-3
+                               d-none"
+                    ></div>
+
+
+                    <table
+                        class="table table-bordered
+                               border-secondary mb-0"
+                    >
+
                         <tbody>
+
                             <tr>
-                                <th>Traffic Density</th>
-                                <td id="density">0%</td>
+
+                                <th>
+                                    Traffic Density
+                                </th>
+
+                                <td id="density">
+                                    0%
+                                </td>
+
                             </tr>
+
+
                             <tr>
-                                <th>Average Speed</th>
-                                <td id="speed">0 km/h</td>
+
+                                <th>
+                                    Average Speed
+                                </th>
+
+                                <td id="recommendationSpeed">
+                                    0 km/h
+                                </td>
+
                             </tr>
+
+
                             <tr>
-                                <th>Signal Status</th>
-                                <td id="signalStatus"><span class="badge bg-success">GREEN</span></td>
+
+                                <th>
+                                    Signal Status
+                                </th>
+
+                                <td id="signalStatus">
+
+                                    <span class="badge bg-success">
+                                        GREEN
+                                    </span>
+
+                                </td>
+
                             </tr>
+
+
                             <tr>
-                                <th>Prediction</th>
-                                <td id="prediction">Normal</td>
+
+                                <th>
+                                    Prediction
+                                </th>
+
+                                <td id="prediction">
+                                    Normal
+                                </td>
+
                             </tr>
+
                         </tbody>
+
                     </table>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
 
-    <!-- Vehicle Pie Chart, Emergency Detection & Congestion Summary -->
+
+
+    <!-- ======================================================
+         VEHICLE CHART + EMERGENCY + CONGESTION
+         ====================================================== -->
+
     <div class="row mb-4">
-        <div class="col-lg-4 mb-3">
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary h-100">
-                <div class="card-header border-secondary-subtle fw-bold">
-                    <i class="fas fa-chart-pie text-success me-1"></i> Vehicle Type Distribution
-                </div>
-                <div class="card-body">
-                    <canvas id="vehicleChart" style="height: 220px;"></canvas>
-                </div>
-            </div>
-        </div>
+
+
+        <!-- VEHICLE CHART -->
 
         <div class="col-lg-4 mb-3">
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary h-100">
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary h-100"
+            >
+
                 <div class="card-header border-secondary-subtle fw-bold">
-                    <i class="fas fa-ambulance text-danger me-1"></i> Emergency Vehicle Detection
+
+                    <i class="fas fa-chart-pie text-success me-1"></i>
+
+                    Vehicle Type Distribution
+
                 </div>
+
+
                 <div class="card-body">
-                    <div id="emergencyPanel" class="alert alert-success py-2">
+
+                    <canvas id="vehicleChart"></canvas>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- EMERGENCY -->
+
+        <div class="col-lg-4 mb-3">
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary h-100"
+            >
+
+                <div class="card-header border-secondary-subtle fw-bold">
+
+                    <i class="fas fa-ambulance text-danger me-1"></i>
+
+                    Emergency Vehicle Detection
+
+                </div>
+
+
+                <div class="card-body">
+
+
+                    <div
+                        id="emergencyPanel"
+                        class="alert alert-success py-2"
+                    >
+
+                        <i class="fas fa-check-circle me-1"></i>
+
                         No Emergency Vehicle Detected
+
                     </div>
 
-                    <table class="table table-bordered border-secondary mb-0">
+
+                    <table
+                        class="table table-bordered
+                               border-secondary mb-0"
+                    >
+
                         <tbody>
+
                             <tr>
-                                <th>Emergency Vehicle</th>
-                                <td>No</td>
+
+                                <th>
+                                    Emergency Vehicle
+                                </th>
+
+                                <td id="emergencyVehicleStatus">
+                                    No
+                                </td>
+
                             </tr>
+
+
                             <tr>
-                                <th>Signal Priority</th>
-                                <td>NORMAL</td>
+
+                                <th>
+                                    Signal Priority
+                                </th>
+
+                                <td id="signalPriority">
+                                    NORMAL
+                                </td>
+
                             </tr>
+
+
                             <tr>
-                                <th>Green Cycle</th>
-                                <td>30 Sec</td>
+
+                                <th>
+                                    Green Cycle
+                                </th>
+
+                                <td id="greenCycle">
+                                    30 Sec
+                                </td>
+
                             </tr>
+
+
                             <tr>
-                                <th>Protocol Message</th>
-                                <td>No priority overrides required.</td>
+
+                                <th>
+                                    Protocol Message
+                                </th>
+
+                                <td id="protocolMessage">
+                                    No priority overrides required.
+                                </td>
+
                             </tr>
+
                         </tbody>
+
                     </table>
+
                 </div>
+
             </div>
+
         </div>
+
+
+
+        <!-- CONGESTION -->
 
         <div class="col-lg-4 mb-3">
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary h-100">
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary h-100"
+            >
+
                 <div class="card-header border-secondary-subtle fw-bold">
-                    <i class="fas fa-road text-warning me-1"></i> Congestion Summary
+
+                    <i class="fas fa-road text-warning me-1"></i>
+
+                    Congestion Summary
+
                 </div>
+
+
                 <div class="card-body">
-                    <table class="table table-striped table-dark mb-0">
+
+                    <table
+                        class="table table-striped
+                               table-dark mb-0"
+                    >
+
                         <tbody>
+
                             <tr>
-                                <th>Current Level</th>
-                                <td id="currentLevel">LOW</td>
+
+                                <th>
+                                    Current Level
+                                </th>
+
+                                <td id="currentLevel">
+                                    LOW
+                                </td>
+
                             </tr>
+
+
                             <tr>
-                                <th>Road Capacity Usage</th>
-                                <td id="roadUsage">0%</td>
+
+                                <th>
+                                    Road Capacity Usage
+                                </th>
+
+                                <td id="roadUsage">
+                                    0%
+                                </td>
+
                             </tr>
+
+
                             <tr>
-                                <th>Estimated Delay</th>
-                                <td id="delay">0 Minutes</td>
+
+                                <th>
+                                    Estimated Delay
+                                </th>
+
+                                <td id="delay">
+                                    0 Minutes
+                                </td>
+
                             </tr>
+
+
                             <tr>
-                                <th>Suggested Bypass</th>
-                                <td id="route">Main Highway</td>
+
+                                <th>
+                                    Suggested Bypass
+                                </th>
+
+                                <td id="route">
+                                    Main Highway
+                                </td>
+
                             </tr>
+
                         </tbody>
+
                     </table>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
 
-    <!-- System Status Monitor -->
+
+
+    <!-- ======================================================
+         SYSTEM HEALTH
+         ====================================================== -->
+
     <div class="row mb-4">
+
         <div class="col-lg-12">
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary">
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary"
+            >
+
                 <div class="card-header border-secondary-subtle fw-bold">
-                    <i class="fas fa-server text-success me-1"></i> System Health & Module Status
+
+                    <i class="fas fa-server text-success me-1"></i>
+
+                    System Health & Module Status
+
                 </div>
+
+
                 <div class="card-body">
+
                     <div class="row text-center">
-                        <div class="col-md-3">
+
+
+                        <!-- AI -->
+
+                        <div class="col-md-3 health-item">
+
                             <i class="fas fa-microchip fa-3x text-primary"></i>
-                            <h6 class="mt-2 fw-semibold">AI Inference Engine</h6>
-                            <span id="aiEngine" class="badge bg-success">RUNNING</span>
+
+                            <h6 class="mt-2 fw-semibold">
+                                AI Inference Engine
+                            </h6>
+
+                            <span
+                                id="aiEngine"
+                                class="badge bg-success"
+                            >
+                                RUNNING
+                            </span>
+
                         </div>
-                        <div class="col-md-3">
+
+
+                        <!-- DATABASE -->
+
+                        <div class="col-md-3 health-item">
+
                             <i class="fas fa-database fa-3x text-warning"></i>
-                            <h6 class="mt-2 fw-semibold">PostgreSQL / SQLite</h6>
-                            <span class="badge bg-success">CONNECTED</span>
+
+                            <h6 class="mt-2 fw-semibold">
+                                PostgreSQL / SQLite
+                            </h6>
+
+                            <span class="badge bg-success">
+                                CONNECTED
+                            </span>
+
                         </div>
-                        <div class="col-md-3">
+
+
+                        <!-- FASTAPI -->
+
+                        <div class="col-md-3 health-item">
+
                             <i class="fas fa-network-wired fa-3x text-info"></i>
-                            <h6 class="mt-2 fw-semibold">FastAPI Gateway</h6>
-                            <span class="badge bg-success">ACTIVE</span>
+
+                            <h6 class="mt-2 fw-semibold">
+                                FastAPI Gateway
+                            </h6>
+
+                            <span class="badge bg-success">
+                                ACTIVE
+                            </span>
+
                         </div>
-                        <div class="col-md-3">
+
+
+                        <!-- CAMERA -->
+
+                        <div class="col-md-3 health-item">
+
                             <i class="fas fa-video fa-3x text-danger"></i>
-                            <h6 class="mt-2 fw-semibold">CCTV Camera Stream</h6>
-                            <span id="cameraStatus" class="badge bg-success">ONLINE</span>
+
+                            <h6 class="mt-2 fw-semibold">
+                                CCTV Camera Stream
+                            </h6>
+
+                            <span
+                                id="cameraStatus"
+                                class="badge bg-success"
+                            >
+                                ONLINE
+                            </span>
+
                         </div>
+
                     </div>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
 
-    <!-- Recent Detections & Live System Alerts -->
+
+
+    <!-- ======================================================
+         RECENT VEHICLE DETECTIONS
+         ====================================================== -->
+
     <div class="row mb-4">
+
+
+        <!-- VEHICLE LOG -->
+
         <div class="col-lg-8 mb-3">
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary">
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary"
+            >
+
                 <div class="card-header border-secondary-subtle fw-bold">
-                    <i class="fas fa-list text-primary me-1"></i> Recent Vehicle Detections Log
+
+                    <i class="fas fa-list text-primary me-1"></i>
+
+                    Recent Vehicle Detections Log
+
                 </div>
+
+
                 <div class="card-body p-0">
-                    <table class="table table-dark table-striped table-hover mb-0">
+
+                    <table
+                        class="table table-dark
+                               table-striped
+                               table-hover mb-0"
+                    >
+
                         <thead>
+
                             <tr>
-                                <th>Vehicle Class</th>
-                                <th>Detection Count</th>
+
+                                <th>
+                                    Vehicle Class
+                                </th>
+
+                                <th>
+                                    Detection Count
+                                </th>
+
                             </tr>
+
                         </thead>
+
+
                         <tbody id="vehicleTable">
+
                             <tr>
-                                <td colspan="2" class="text-center text-secondary">Loading live detection logs...</td>
+
+                                <td
+                                    colspan="2"
+                                    class="text-center text-secondary"
+                                >
+
+                                    Waiting for video detection data...
+
+                                </td>
+
                             </tr>
+
                         </tbody>
+
                     </table>
+
                 </div>
+
             </div>
+
         </div>
+
+
+
+        <!-- ALERTS -->
 
         <div class="col-lg-4 mb-3">
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary">
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary"
+            >
+
                 <div class="card-header border-secondary-subtle fw-bold">
-                    <i class="fas fa-bell text-danger me-1"></i> Active Notifications & Alerts
+
+                    <i class="fas fa-bell text-danger me-1"></i>
+
+                    Active Notifications & Alerts
+
                 </div>
+
+
                 <div class="card-body">
+
                     <div id="alertBox">
-                        <div class="alert alert-success mb-0 py-2">No active congestion alerts.</div>
+
+                        <div class="alert alert-success mb-0 py-2">
+
+                            <i class="fas fa-check-circle me-1"></i>
+
+                            No active congestion alerts.
+
+                        </div>
+
                     </div>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
 
-    <!-- Exportable Reports Section -->
-    <div class="row mb-4">
+
+
+    <!-- ======================================================
+         REPORTS
+         ====================================================== -->
+
+    <div class="row mb-4 admin-only">
+
         <div class="col-lg-12">
-            <div class="card shadow-sm border-secondary-subtle bg-body-tertiary">
+
+            <div
+                class="card shadow-sm
+                       border-secondary-subtle
+                       bg-body-tertiary"
+            >
+
                 <div class="card-header border-secondary-subtle fw-bold">
-                    <i class="fas fa-file-alt text-success me-1"></i> Traffic System Reports Summary
+
+                    <i class="fas fa-file-alt text-success me-1"></i>
+
+                    Traffic System Reports Summary
+
                 </div>
+
+
                 <div class="card-body p-0">
-                    <table class="table table-dark table-bordered mb-0">
+
+                    <table
+                        class="table table-dark
+                               table-bordered mb-0"
+                    >
+
                         <thead>
+
                             <tr>
-                                <th>Metric Description</th>
-                                <th>Value</th>
+
+                                <th>
+                                    Metric Description
+                                </th>
+
+                                <th>
+                                    Value
+                                </th>
+
                             </tr>
+
                         </thead>
+
+
                         <tbody id="reportTable">
+
                             <tr>
-                                <td colspan="2" class="text-center text-secondary">Loading system reports...</td>
+
+                                <td
+                                    colspan="2"
+                                    class="text-center text-secondary"
+                                >
+
+                                    Loading system reports...
+
+                                </td>
+
                             </tr>
+
                         </tbody>
+
                     </table>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
 
-    <!-- Error Console Box -->
+
+
+    <!-- ======================================================
+         ERROR BOX
+         ====================================================== -->
+
     <div class="row mt-2">
+
         <div class="col-lg-12">
+
             <div id="errorBox"></div>
+
         </div>
+
     </div>
 
-    <!-- Footer -->
+
+
+    <!-- ======================================================
+         FOOTER
+         ====================================================== -->
+
     <footer class="mt-4 text-center text-secondary">
+
         <hr class="border-secondary">
-        <p>© 2026 AI Traffic Management & Congestion Detection System | Milestone 3</p>
+
+        <p>
+
+            © 2026 AI Traffic Management & Congestion Detection System
+            | Milestone 3
+
+        </p>
+
     </footer>
 
+
 </div>
+
 {% endblock %}
 
+
+
 {% block extra_js %}
-<!-- Chart.js and Leaflet Libraries -->
+
+<!-- ==========================================================
+     CHART.JS
+     ========================================================== -->
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<!-- ==========================================================
+     LEAFLET
+     ========================================================== -->
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- External Application Scripts -->
+
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+
+<!-- ==========================================================
+     YOUR JAVASCRIPT
+     ========================================================== -->
+
 <script src="/static/js/notification.js"></script>
+
 <script src="/static/js/dashboard.js"></script>
 
+
+
 <script>
-// Global chart objects
-window.trafficChart = null;
-window.pieChart = null;
 
-window.addEventListener("DOMContentLoaded", () => {
+/* ==========================================================
+   DASHBOARD PAGE LOAD
+   ========================================================== */
 
-    // 1. Initialize Line Chart for Traffic Trend Analysis
-    const trafficCtx = document.getElementById("trafficChart");
-    if (trafficCtx) {
-        window.trafficChart = new Chart(trafficCtx, {
-            type: "line",
-            data: {
-                labels: ["06:00", "08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"],
-                datasets: [
-                    {
-                        label: "Vehicles / Hr",
-                        data: [450, 1280, 920, 610, 750, 1100, 1520, 890],
-                        borderColor: '#2563eb',
-                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    },
-                    {
-                        label: "Congestion %",
-                        data: [20, 85, 60, 35, 45, 70, 92, 50],
-                        borderColor: '#dc2626',
-                        borderDash: [5, 5],
-                        tension: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: true } }
-            }
-        });
-    }
+document.addEventListener("DOMContentLoaded", function () {
 
-    // 2. Initialize Pie Chart for Vehicle Distribution
-    const vehicleCtx = document.getElementById("vehicleChart");
-    if (vehicleCtx) {
-        window.pieChart = new Chart(vehicleCtx, {
-            type: "doughnut",
-            data: {
-                labels: ["Cars", "Bikes", "Buses", "Trucks", "Auto", "Ambulance"],
-                datasets: [{ 
-                    data: [8500, 3200, 1100, 1450, 650, 12],
-                    backgroundColor: [
-                        '#2563eb', '#f59e0b', '#16a34a', 
-                        '#dc2626', '#06b6d4', '#ef4444'
+    console.log("=================================");
+    console.log("Dashboard HTML loaded");
+    console.log("=================================");
+
+
+    /* ======================================================
+       VEHICLE PIE CHART
+       ====================================================== */
+
+    const vehicleCanvas =
+        document.getElementById("vehicleChart");
+
+
+    if (
+        vehicleCanvas &&
+        typeof Chart !== "undefined"
+    ) {
+
+        if (window.pieChart) {
+
+            window.pieChart.destroy();
+
+        }
+
+
+        window.pieChart = new Chart(
+            vehicleCanvas,
+            {
+
+                type: "doughnut",
+
+                data: {
+
+                    labels: [
+                        "Cars",
+                        "Bikes",
+                        "Buses",
+                        "Trucks",
+                        "Auto",
+                        "Ambulance"
+                    ],
+
+                    datasets: [
+                        {
+
+                            data: [
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                            ],
+
+                            backgroundColor: [
+                                "#2563eb",
+                                "#f59e0b",
+                                "#16a34a",
+                                "#dc2626",
+                                "#06b6d4",
+                                "#ef4444"
+                            ],
+
+                            borderWidth: 2
+
+                        }
                     ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
+
+                },
+
+                options: {
+
+                    responsive: true,
+
+                    maintainAspectRatio: false,
+
+                    plugins: {
+
+                        legend: {
+
+                            display: true,
+
+                            position: "bottom"
+
+                        }
+
+                    }
+
+                }
+
             }
-        });
+        );
+
+        console.log("Vehicle chart initialized");
+
     }
 
-    // Run core dashboard loop from static dashboard.js
-    if (typeof initializeDashboard === 'function') {
-        initializeDashboard();
+
+
+    /* ======================================================
+       VIDEO INPUT
+       ====================================================== */
+
+    const videoInput =
+        document.getElementById("videoFile");
+
+
+    const uploadButton =
+        document.getElementById("uploadVideoButton");
+
+
+    const uploadStatus =
+        document.getElementById("uploadStatus");
+
+
+    const videoPreview =
+        document.getElementById("uploadedVideoPreview");
+
+
+    const videoContainer =
+        document.getElementById("uploadedVideoContainer");
+
+
+    if (videoInput) {
+
+        console.log(
+            "Video input found"
+        );
+
     }
-    
-    // Fetch KPI Summary Data
-    loadSummaryKPIs();
+
+
+    if (uploadButton) {
+
+        console.log(
+            "Upload button found"
+        );
+
+    }
+
+
+
+    /* ======================================================
+       FILE SELECTION
+       ====================================================== */
+
+    if (videoInput) {
+
+        videoInput.addEventListener(
+            "change",
+            function () {
+
+                if (
+                    !this.files ||
+                    this.files.length === 0
+                ) {
+
+                    return;
+
+                }
+
+
+                const file =
+                    this.files[0];
+
+
+                console.log(
+                    "Selected video:",
+                    file.name
+                );
+
+
+                const sizeMB =
+                    (
+                        file.size /
+                        (1024 * 1024)
+                    ).toFixed(2);
+
+
+                if (uploadStatus) {
+
+                    uploadStatus.innerHTML = `
+
+                        <div class="alert alert-info py-2 mb-0">
+
+                            <i class="fas fa-video me-1"></i>
+
+                            <strong>
+                                ${file.name}
+                            </strong>
+
+                            <br>
+
+                            <small>
+                                Size: ${sizeMB} MB
+                            </small>
+
+                        </div>
+
+                    `;
+
+                }
+
+            }
+        );
+
+    }
+
+
+
+    /* ======================================================
+       INITIALIZE DASHBOARD
+       ====================================================== */
+
+    if (
+        typeof initializeDashboard === "function"
+    ) {
+
+        console.log(
+            "Calling initializeDashboard()"
+        );
+
+        initializeDashboard();
+
+    } else {
+
+        console.error(
+            "initializeDashboard() not found."
+        );
+
+    }
+
 });
 
-// Fetch KPI metrics from backend router
-async function loadSummaryKPIs() {
-    try {
-        const res = await fetch('/analytics/summary');
-        const data = await res.json();
 
-        if (data) {
-            document.getElementById('totalVehicles').innerText = data.total_vehicles ? data.total_vehicles.toLocaleString() : '14,250';
-            document.getElementById('congestionLevel').innerText = data.congestion_level || 'HEAVY';
-            document.getElementById('kpi-alerts').innerText = data.alerts_today || '12';
-            document.getElementById('kpi-speed').innerText = `${data.average_speed_kmh || 34.5} km/h`;
+
+/* ==========================================================
+   LOCAL VIDEO UPLOAD / PREVIEW
+   ========================================================== */
+
+function uploadVideo() {
+
+    console.log(
+        "uploadVideo() started"
+    );
+
+
+    const videoInput =
+        document.getElementById("videoFile");
+
+
+    const uploadButton =
+        document.getElementById("uploadVideoButton");
+
+
+    const uploadStatus =
+        document.getElementById("uploadStatus");
+
+
+    const uploadProgress =
+        document.getElementById("uploadProgress");
+
+
+    const progressBar =
+        document.getElementById("uploadProgressBar");
+
+
+    const videoPreview =
+        document.getElementById("uploadedVideoPreview");
+
+
+    const videoContainer =
+        document.getElementById("uploadedVideoContainer");
+
+
+
+    /* ======================================================
+       CHECK FILE
+       ====================================================== */
+
+    if (
+        !videoInput ||
+        !videoInput.files ||
+        videoInput.files.length === 0
+    ) {
+
+        if (uploadStatus) {
+
+            uploadStatus.innerHTML = `
+
+                <div class="alert alert-warning py-2">
+
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+
+                    Please select a traffic video first.
+
+                </div>
+
+            `;
+
         }
-    } catch (e) {
-        console.log("Summary API falling back to static dashboard feed.");
+
+        return;
+
     }
+
+
+    const file =
+        videoInput.files[0];
+
+
+
+    /* ======================================================
+       CHECK VIDEO TYPE
+       ====================================================== */
+
+    const allowedExtensions = [
+
+        ".mp4",
+        ".avi",
+        ".mov",
+        ".mkv",
+        ".webm"
+
+    ];
+
+
+    const fileName =
+        file.name.toLowerCase();
+
+
+    const validExtension =
+        allowedExtensions.some(
+            extension =>
+                fileName.endsWith(extension)
+        );
+
+
+    if (!validExtension) {
+
+        if (uploadStatus) {
+
+            uploadStatus.innerHTML = `
+
+                <div class="alert alert-danger py-2">
+
+                    <i class="fas fa-times-circle me-1"></i>
+
+                    Invalid video format.
+
+                    <br>
+
+                    Please select MP4, AVI, MOV, MKV or WEBM.
+
+                </div>
+
+            `;
+
+        }
+
+        return;
+
+    }
+
+
+
+    /* ======================================================
+       BUTTON DISABLED
+       ====================================================== */
+
+    if (uploadButton) {
+
+        uploadButton.disabled = true;
+
+        uploadButton.innerHTML = `
+
+            <span
+                class="spinner-border
+                       spinner-border-sm
+                       me-2"
+            ></span>
+
+            Loading Video...
+
+        `;
+
+    }
+
+
+
+    /* ======================================================
+       SHOW PROGRESS
+       ====================================================== */
+
+    if (uploadProgress) {
+
+        uploadProgress.style.display = "flex";
+
+    }
+
+
+    if (progressBar) {
+
+        progressBar.style.width = "0%";
+
+    }
+
+
+
+    /* ======================================================
+       SIMULATED PROGRESS
+       ====================================================== */
+
+    let progress = 0;
+
+
+    const progressTimer =
+        setInterval(
+            function () {
+
+                progress += 10;
+
+
+                if (progressBar) {
+
+                    progressBar.style.width =
+                        progress + "%";
+
+                }
+
+
+                if (progress >= 100) {
+
+                    clearInterval(
+                        progressTimer
+                    );
+
+                }
+
+            },
+            100
+        );
+
+
+
+    /* ======================================================
+       CREATE LOCAL VIDEO URL
+       ====================================================== */
+
+    const videoURL =
+        URL.createObjectURL(file);
+
+
+
+    /* ======================================================
+       SHOW VIDEO
+       ====================================================== */
+
+    if (videoPreview) {
+
+        videoPreview.src =
+            videoURL;
+
+        videoPreview.style.display =
+            "block";
+
+        videoPreview.load();
+
+    }
+
+
+    if (videoContainer) {
+
+        videoContainer.style.display =
+            "block";
+
+    }
+
+
+
+    /* ======================================================
+       SUCCESS MESSAGE
+       ====================================================== */
+
+    setTimeout(
+        function () {
+
+            if (uploadStatus) {
+
+                const sizeMB =
+                    (
+                        file.size /
+                        (1024 * 1024)
+                    ).toFixed(2);
+
+
+                uploadStatus.innerHTML = `
+
+                    <div class="alert alert-success py-2">
+
+                        <i class="fas fa-check-circle me-1"></i>
+
+                        <strong>
+                            Video loaded successfully!
+                        </strong>
+
+                        <br>
+
+                        <small>
+
+                            File:
+                            ${file.name}
+
+                            |
+
+                            Size:
+                            ${sizeMB} MB
+
+                        </small>
+
+                        <br>
+
+                        <small>
+
+                            You can now play the video below.
+
+                        </small>
+
+                    </div>
+
+                `;
+
+            }
+
+
+            if (uploadButton) {
+
+                uploadButton.disabled = false;
+
+                uploadButton.innerHTML = `
+
+                    <i class="fas fa-cloud-upload-alt me-1"></i>
+
+                    Upload & Preview Video
+
+                `;
+
+            }
+
+
+            if (uploadProgress) {
+
+                uploadProgress.style.display =
+                    "none";
+
+            }
+
+
+            if (progressBar) {
+
+                progressBar.style.width =
+                    "100%";
+
+            }
+
+
+            console.log(
+                "Video preview ready:",
+                file.name
+            );
+
+        },
+        1100
+    );
+
 }
 
-// AI Recommendation Route Handler
+
+
+/* ==========================================================
+   AI RECOMMENDATION
+   ========================================================== */
+
 async function fetchAIRecommendation() {
-    const road = document.getElementById('road-input').value;
-    const density = parseFloat(document.getElementById('density-input').value);
+
+    const roadElement =
+        document.getElementById(
+            "road-input"
+        );
+
+
+    const densityElement =
+        document.getElementById(
+            "density-input"
+        );
+
+
+    const outputDiv =
+        document.getElementById(
+            "ai-recommendation-output"
+        );
+
+
+    if (
+        !roadElement ||
+        !densityElement
+    ) {
+
+        return;
+
+    }
+
+
+    const road =
+        roadElement.value.trim();
+
+
+    const density =
+        parseFloat(
+            densityElement.value
+        );
+
+
+    if (!road) {
+
+        alert(
+            "Please enter a road name."
+        );
+
+        return;
+
+    }
+
+
+    if (
+        isNaN(density) ||
+        density < 0 ||
+        density > 100
+    ) {
+
+        alert(
+            "Please enter density between 0 and 100."
+        );
+
+        return;
+
+    }
+
 
     try {
-        const res = await fetch('/recommendation/suggest', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ road_name: road, density: density, time_of_day: "08:30 AM" })
-        });
-        
-        const result = await res.json();
 
-        const outputDiv = document.getElementById('ai-recommendation-output');
-        outputDiv.classList.remove('d-none');
-        outputDiv.innerHTML = `
-            <strong>Action Required:</strong> <span class="badge bg-danger">${result.action || 'Reroute'}</span><br>
-            <strong>AI Suggestion:</strong> ${result.recommendation}<br>
-            <small class="text-success fw-bold">Estimated Delay Saved: ${result.estimated_time_saved || '15 mins'}</small>
-        `;
+        const response =
+            await fetch(
+                "/recommendation/suggest",
+                {
 
-        if (density >= 80 && typeof triggerNotification === 'function') {
-            triggerNotification(`🚨 Congestion Alert: ${road}`, `Density reached ${density}%. Alternate route recommended.`, 'error');
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body: JSON.stringify({
+
+                        road_name:
+                            road,
+
+                        density:
+                            density,
+
+                        time_of_day:
+                            "08:30 AM"
+
+                    })
+
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Recommendation API returned " +
+                response.status
+            );
+
         }
-    } catch (err) {
-        document.getElementById('ai-recommendation-output').classList.remove('d-none');
-        document.getElementById('ai-recommendation-output').innerHTML = `
-            <strong>Action Required:</strong> <span class="badge bg-warning text-dark">Divert Traffic</span><br>
-            <strong>AI Suggestion:</strong> Heavy density on ${road}. Divert approaching traffic to Ring Road.<br>
-            <small class="text-success fw-bold">Time Saved: ~18 mins</small>
+
+
+        const result =
+            await response.json();
+
+
+        if (!outputDiv) {
+
+            return;
+
+        }
+
+
+        outputDiv.classList.remove(
+            "d-none"
+        );
+
+
+        outputDiv.innerHTML = `
+
+            <strong>
+                Action Required:
+            </strong>
+
+            <span class="badge bg-danger">
+
+                ${result.action || "Reroute"}
+
+            </span>
+
+            <br>
+
+            <strong>
+                AI Suggestion:
+            </strong>
+
+            ${
+                result.recommendation ||
+                "Alternate route recommended."
+            }
+
+            <br>
+
+            <small class="text-success fw-bold">
+
+                Estimated Delay Saved:
+
+                ${
+                    result.estimated_time_saved ||
+                    "15 mins"
+                }
+
+            </small>
+
         `;
+
     }
+
+    catch (error) {
+
+        console.error(
+            "AI recommendation error:",
+            error
+        );
+
+
+        if (outputDiv) {
+
+            outputDiv.classList.remove(
+                "d-none"
+            );
+
+
+            outputDiv.innerHTML = `
+
+                <strong>
+                    Action Required:
+                </strong>
+
+                <span class="badge bg-warning text-dark">
+
+                    Divert Traffic
+
+                </span>
+
+                <br>
+
+                <strong>
+                    AI Suggestion:
+                </strong>
+
+                Heavy density detected on
+                ${road}.
+                Divert approaching traffic
+                to Ring Road.
+
+                <br>
+
+                <small class="text-success fw-bold">
+
+                    Time Saved: ~18 mins
+
+                </small>
+
+            `;
+
+        }
+
+    }
+
 }
 
-// Session Monitor
+
+
+/* ==========================================================
+   SESSION MONITOR
+   ========================================================== */
+
 function sessionExpired() {
-    const token = localStorage.getItem("access_token") || localStorage.getItem("token");
-    if (!token) window.location.href = "/login";
+
+    const token =
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("token");
+
+
+    if (!token) {
+
+        console.warn(
+            "No authentication token found."
+        );
+
+
+        window.location.href =
+            "/login";
+
+    }
+
 }
-setInterval(sessionExpired, 60000);
+
+
+setInterval(
+    sessionExpired,
+    60000
+);
+
+
+
+/* ==========================================================
+   TRAFFIC INCIDENT FALLBACK
+   ==========================================================
+
+   dashboard.js can replace this content if your backend
+   provides incident data.
+
+   This prevents the dashboard from remaining blank if the
+   incident API is unavailable.
+   ========================================================== */
+
+async function loadDashboardIncidents() {
+
+    const container =
+        document.getElementById(
+            "dashboardIncidentContainer"
+        );
+
+
+    if (!container) {
+
+        return;
+
+    }
+
+
+    try {
+
+        /*
+         * Try the incidents endpoint.
+         */
+
+        const response =
+            await fetch(
+                "/incidents"
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Incident API returned " +
+                response.status
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        console.log(
+            "Incident data:",
+            data
+        );
+
+
+        /*
+         * If backend returns an array.
+         */
+
+        let incidents =
+            Array.isArray(data)
+                ? data
+                : (
+                    data.incidents ||
+                    data.data ||
+                    []
+                );
+
+
+        if (!Array.isArray(incidents)) {
+
+            incidents = [];
+
+        }
+
+
+        /*
+         * No incidents.
+         */
+
+        if (incidents.length === 0) {
+
+            container.innerHTML = `
+
+                <div class="alert alert-success mb-0">
+
+                    <i class="fas fa-check-circle me-2"></i>
+
+                    No active traffic incidents.
+
+                </div>
+
+            `;
+
+            return;
+
+        }
+
+
+        /*
+         * Display incidents.
+         */
+
+        container.innerHTML =
+            incidents
+                .slice(0, 5)
+                .map(
+                    function (incident) {
+
+                        const title =
+                            incident.title ||
+                            incident.type ||
+                            incident.incident_type ||
+                            "Traffic Incident";
+
+
+                        const location =
+                            incident.location ||
+                            incident.road ||
+                            incident.road_name ||
+                            "Location unavailable";
+
+
+                        const severity =
+                            String(
+                                incident.severity ||
+                                incident.level ||
+                                "MEDIUM"
+                            ).toUpperCase();
+
+
+                        let badgeClass =
+                            "bg-warning text-dark";
+
+
+                        let cardClass =
+                            "incident-medium";
+
+
+                        if (
+                            severity === "HIGH" ||
+                            severity === "CRITICAL"
+                        ) {
+
+                            badgeClass =
+                                "bg-danger";
+
+                            cardClass =
+                                "incident-high";
+
+                        }
+
+                        else if (
+                            severity === "LOW"
+                        ) {
+
+                            badgeClass =
+                                "bg-success";
+
+                            cardClass =
+                                "incident-low";
+
+                        }
+
+
+                        return `
+
+                            <div
+                                class="card
+                                       incident-card
+                                       ${cardClass}
+                                       mb-2
+                                       bg-body
+                                       border-secondary-subtle"
+                            >
+
+                                <div class="card-body py-3">
+
+                                    <div
+                                        class="d-flex
+                                               align-items-center"
+                                    >
+
+                                        <div
+                                            class="incident-icon
+                                                   bg-danger-subtle
+                                                   text-danger
+                                                   me-3"
+                                        >
+
+                                            <i
+                                                class="fas
+                                                       fa-exclamation-triangle"
+                                            ></i>
+
+                                        </div>
+
+
+                                        <div class="flex-grow-1">
+
+                                            <div
+                                                class="fw-bold"
+                                            >
+
+                                                ${title}
+
+                                            </div>
+
+                                            <small
+                                                class="text-secondary"
+                                            >
+
+                                                <i
+                                                    class="fas
+                                                           fa-map-marker-alt
+                                                           me-1"
+                                                ></i>
+
+                                                ${location}
+
+                                            </small>
+
+                                        </div>
+
+
+                                        <span
+                                            class="badge
+                                                   ${badgeClass}"
+                                        >
+
+                                            ${severity}
+
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        `;
+
+                    }
+                )
+                .join("");
+
+    }
+
+    catch (error) {
+
+        console.warn(
+            "Could not load incidents:",
+            error
+        );
+
+
+        /*
+         * Do not show a scary error on the dashboard.
+         * The rest of the dashboard can continue working.
+         */
+
+        container.innerHTML = `
+
+            <div class="alert alert-secondary mb-0">
+
+                <i class="fas fa-info-circle me-2"></i>
+
+                Traffic incident information is
+                currently unavailable.
+
+                <a
+                    href="/incidents"
+                    class="alert-link ms-1"
+                >
+                    View Incidents
+                </a>
+
+            </div>
+
+        `;
+
+    }
+
+}
+
+
+/* ==========================================================
+   LOAD INCIDENTS
+   ========================================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        loadDashboardIncidents();
+
+    }
+);
+
 </script>
+
 {% endblock %}
